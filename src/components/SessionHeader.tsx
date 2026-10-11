@@ -6,9 +6,10 @@ import { T } from '../theme';
 import ErrorBanner from './ErrorBanner';
 
 export default function SessionHeader({ updated }: { updated?: Date }) {
-  const { session, error, refresh } = useSessionCtx();
+  const { session, error, refresh, mode, proxy } = useSessionCtx();
   if (!session) return error ? <ErrorBanner msg={error} onRetry={refresh} /> : <View style={s.box}><Text style={s.sub}>Sessie laden…</Text></View>;
-  const st = sessionStatus(session);
+  const pst = proxy?.session_status;
+  const st = mode === 'proxy' && pst ? (pst === 'Started' || pst === 'Aborted' ? 'Live' : pst === 'Finished' || pst === 'Finalised' || pst === 'Ends' ? 'Afgerond' : 'Gepland') : sessionStatus(session);
   const color = st === 'Live' ? T.red : st === 'Gepland' ? '#f5a623' : '#44444f';
   return (
     <View style={s.box}>
@@ -23,11 +24,14 @@ export default function SessionHeader({ updated }: { updated?: Date }) {
           <Text style={s.badgeT}>{st.toUpperCase()}</Text>
         </View>
       </View>
-      <Text style={s.note}>ⓘ Gratis OpenF1-data loopt enkele seconden tot minuten achter.{updated ? `  ·  ${updated.toLocaleTimeString('nl-NL')}` : ''}</Text>
+      {mode === 'proxy' && <Text style={s.src}>● Bron: officiële F1 live timing{proxy?.lap_count ? `  ·  Ronde ${proxy.lap_count.CurrentLap}/${proxy.lap_count.TotalLaps}` : ''}{proxy?.track_status ? `  ·  ${TRACK[proxy.track_status.Status] ?? proxy.track_status.Message}` : ''}</Text>}
+      <Text style={s.note}>ⓘ {mode === 'proxy' ? 'Live timing via eigen proxy (enkele seconden vertraging).' : 'Gratis OpenF1-data loopt enkele seconden tot minuten achter.'}{updated ? `  ·  ${updated.toLocaleTimeString('nl-NL')}` : ''}</Text>
     </View>
   );
 }
+const TRACK: Record<string, string> = { '1': 'Groen', '2': 'Geel', '4': 'Safety car', '5': 'Rode vlag', '6': 'VSC', '7': 'VSC eindigt' };
 const s = StyleSheet.create({
+  src: { color: '#4cd964', fontSize: 12, fontWeight: '700', marginTop: 8 },
   box: { margin: 10, marginBottom: 4, padding: 14, backgroundColor: T.card, borderRadius: T.radius, borderLeftWidth: 4, borderLeftColor: T.red },
   row: { flexDirection: 'row', alignItems: 'center' },
   kicker: { color: T.red, fontSize: 11, fontWeight: '800', letterSpacing: 1.5 },

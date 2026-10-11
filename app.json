@@ -28,6 +28,11 @@
     },
     "experiments": {
       "baseUrl": "/f1-live"
+    },
+    "extra": {
+      "router": {
+        "origin": "https://mastero83.github.io"
+      }
     }
   }
 }

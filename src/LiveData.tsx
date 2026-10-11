@@ -12,10 +12,11 @@ const since = (field: string, d?: string): Record<string, string> => (d ? { [`${
 
 /** One shared poller for all tabs; every request after the first only asks for new records. */
 export function LiveDataProvider({ children }: { children: React.ReactNode }) {
-  const { session, live } = useSessionCtx();
+  const { session, live, mode, proxy } = useSessionCtx();
   const key = session?.session_key;
   const cache = useRef<Cache>(fresh());
   const { data, error, updated, refresh } = usePolling(async () => {
+    if (mode === 'proxy') return undefined; // proxy data is used directly below
     if (cache.current.key !== key) cache.current = fresh(key);
     const c = cache.current;
     if (key) {
@@ -39,7 +40,12 @@ export function LiveDataProvider({ children }: { children: React.ReactNode }) {
       for (const p of pits) { c.pits.set(`${p.driver_number}-${p.lap_number}`, p); if (!c.lastPit || p.date > c.lastPit) c.lastPit = p.date; }
     }
     return { positions: [...c.posLatest.values()], posHistory: c.posHist, intervals: [...c.ints.values()], laps: [...c.laps.values()], stints: c.stints, pits: [...c.pits.values()] };
-  }, live ? 5000 : 0, [key, live]);
+  }, mode === 'proxy' ? 0 : live ? 5000 : 0, [key, live, mode]);
+  if (mode === 'proxy' && proxy) {
+    const pv: Live = { positions: proxy.positions, posHistory: proxy.positions, intervals: proxy.intervals, laps: proxy.laps, stints: proxy.stints, pits: [],
+      updated: proxy.last_message ? new Date(proxy.last_message) : undefined, error: proxy.connected ? undefined : 'Live timing proxy is (tijdelijk) niet verbonden met F1.', refresh };
+    return <C.Provider value={pv}>{children}</C.Provider>;
+  }
   const v: Live = { positions: [], posHistory: [], intervals: [], laps: [], stints: [], pits: [], ...data, updated, error, refresh };
   return <C.Provider value={v}>{children}</C.Provider>;
 }

@@ -156,3 +156,28 @@ export const fmtRange = (a: string, b?: string | null) => {
   const o: Intl.DateTimeFormatOptions = { timeZone: TZ, day: 'numeric', month: 'short' };
   return b ? `${new Date(a).toLocaleDateString('nl-NL', o)} – ${new Date(b).toLocaleDateString('nl-NL', o)}` : new Date(a).toLocaleDateString('nl-NL', o);
 };
+
+// ---- F1 live-timing proxy (own server on the box, see /workspace/f1-proxy) ----
+const DEFAULT_PROXY = 'https://fv0h4oa-anonymous-8081.exp.direct/proxy';
+export function proxyUrl(): string {
+  const g = globalThis as any;
+  try {
+    const q = g.location?.search ? new URLSearchParams(g.location.search).get('proxy') : null;
+    if (q) { g.localStorage?.setItem('f1proxy', q); return q.replace(/\/$/, ''); }
+    return (g.localStorage?.getItem('f1proxy') as string | null) ?? DEFAULT_PROXY;
+  } catch { return DEFAULT_PROXY; }
+}
+export interface ProxyState {
+  source: string; connected: boolean; last_message: string | null; session: Session | null; session_status: string | null;
+  track_status: { Status: string; Message: string } | null; lap_count: { CurrentLap: number; TotalLaps: number } | null;
+  drivers: Driver[]; positions: Position[]; intervals: Interval[]; laps: Lap[]; stints: Stint[]; race_control: RaceControl[]; team_radio: TeamRadio[];
+}
+export async function getProxyState(): Promise<ProxyState> {
+  const ctl = typeof AbortController !== 'undefined' ? new AbortController() : undefined;
+  const t = setTimeout(() => ctl?.abort(), 10_000);
+  try {
+    const res = await fetch(`${proxyUrl()}/state`, { signal: ctl?.signal });
+    if (!res.ok) throw new Error(`proxy HTTP ${res.status}`);
+    return (await res.json()) as ProxyState;
+  } finally { clearTimeout(t); }
+}

@@ -8,11 +8,11 @@ import ErrorBanner from '../components/ErrorBanner';
 import SessionHeader from '../components/SessionHeader';
 
 export default function RadioScreen() {
-  const { session, drivers, live } = useSessionCtx();
+  const { session, drivers, live, mode, proxy } = useSessionCtx();
   const key = session?.session_key;
   const [filter, setFilter] = useState<number | null>(null);
   const [playing, setPlaying] = useState<string | null>(null);
-  const { data, error, updated, refresh } = usePolling(async () => key ? get<TeamRadio>('team_radio', { session_key: key }) : [], live ? 10_000 : 0, [key, live]);
+  const { data, error, updated, refresh } = usePolling(async () => key ? get<TeamRadio>('team_radio', { session_key: key }) : [], mode === 'proxy' ? 0 : live ? 10_000 : 0, [key, live, mode]);
 
   useEffect(() => () => { stop(); }, []);
 
@@ -23,7 +23,7 @@ export default function RadioScreen() {
   };
 
   const dmap = new Map(drivers.map(d => [d.driver_number, d]));
-  const items = [...(data ?? [])].filter(r => filter == null || r.driver_number === filter).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 100);
+  const items = [...(mode === 'proxy' ? proxy?.team_radio ?? [] : data ?? [])].filter(r => filter == null || r.driver_number === filter).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 100);
   return (
     <View style={s.c}>
       <SessionHeader updated={updated} />

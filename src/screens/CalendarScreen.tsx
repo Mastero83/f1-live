@@ -1,7 +1,7 @@
 import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { ScrollView, View, Text, StyleSheet, Pressable, Image, ActivityIndicator } from 'react-native';
 import { usePolling } from '../hooks';
-import { get, Meeting, Session, sessionStatus, SESSION_NL, fmtDay, fmtTime, fmtRange } from '../api';
+import { get, getProxyState, Meeting, Session, sessionStatus, SESSION_NL, fmtDay, fmtTime, fmtRange } from '../api';
 import { T } from '../theme';
 import ErrorBanner from '../components/ErrorBanner';
 
@@ -13,6 +13,8 @@ export default function CalendarScreen({ onOpen }: { onOpen: (target: number | '
     const [meetings, sessions] = await Promise.all([get<Meeting>('meetings', { year }), get<Session>('sessions', { year })]);
     return { meetings, sessions };
   }, 60_000, [year]);
+  const px = usePolling(async () => getProxyState(), 20_000, []);
+  const pxLive = px.data?.session && px.data.connected && px.data.session_status !== 'Finalised' && px.data.session_status !== 'Ends' ? px.data : undefined;
   const [open, setOpen] = useState<Set<number>>(new Set());
   const scroll = useRef<ScrollView>(null);
   const ys = useRef(new Map<number, number>());
@@ -47,6 +49,14 @@ export default function CalendarScreen({ onOpen }: { onOpen: (target: number | '
   return (
     <View style={s.c}>
       <View style={s.top}>
+        {pxLive && liveSessions.length === 0 && (
+          <Pressable style={s.liveBtn} onPress={() => onOpen('latest')}>
+            <View style={s.dot} /><View style={{ flex: 1 }}>
+              <Text style={s.liveK}>{pxLive.session_status === 'Started' ? 'NU LIVE' : 'LIVE TIMING'} · F1 LIVE TIMING</Text>
+              <Text style={s.liveT}>{SESSION_NL[pxLive.session!.session_name] ?? pxLive.session!.session_name} · {pxLive.session!.circuit_short_name}{pxLive.lap_count ? ` · ronde ${pxLive.lap_count.CurrentLap}/${pxLive.lap_count.TotalLaps}` : ''}</Text>
+            </View><Text style={s.liveArrow}>›</Text>
+          </Pressable>
+        )}
         {liveSessions.length > 0 ? liveSessions.map(ls => (
           <Pressable key={ls.session_key} style={s.liveBtn} onPress={() => onOpen(ls.session_key)}>
             <View style={s.dot} /><View style={{ flex: 1 }}>
