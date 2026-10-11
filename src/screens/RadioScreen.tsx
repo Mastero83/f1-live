@@ -12,7 +12,7 @@ export default function RadioScreen() {
   const key = session?.session_key;
   const [filter, setFilter] = useState<number | null>(null);
   const [playing, setPlaying] = useState<string | null>(null);
-  const { data, error, updated, refresh } = usePolling(async () => key ? get<TeamRadio>('team_radio', { session_key: key }) : [], mode === 'proxy' ? 0 : live ? 10_000 : 0, [key, live, mode]);
+  const { data, error, updated, refresh } = usePolling(async () => key && mode !== 'proxy' ? get<TeamRadio>('team_radio', { session_key: key }) : [], mode === 'proxy' ? 0 : live ? 10_000 : 0, [key, live, mode]);
 
   useEffect(() => () => { stop(); }, []);
 
@@ -31,7 +31,7 @@ export default function RadioScreen() {
         <Chip label="Alle" active={filter == null} onPress={() => setFilter(null)} />
         {drivers.map(d => <Chip key={d.driver_number} label={d.name_acronym} colour={d.team_colour} active={filter === d.driver_number} onPress={() => setFilter(d.driver_number)} />)}
       </ScrollView>
-      <ErrorBanner msg={error} onRetry={refresh} hasData={!!data?.length} />
+      <ErrorBanner msg={mode === 'proxy' ? undefined : error} onRetry={refresh} hasData={!!data?.length} />
       <FlatList data={items} keyExtractor={r => r.recording_url}
         ListEmptyComponent={<Text style={s.empty}>Geen teamradioberichten.</Text>}
         renderItem={({ item }) => {

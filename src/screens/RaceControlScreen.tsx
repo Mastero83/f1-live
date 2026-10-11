@@ -16,12 +16,12 @@ const CAT: Record<string, string> = { Flag: 'Vlag', SafetyCar: 'Safety car', Drs
 export default function RaceControlScreen() {
   const { session, live, mode, proxy } = useSessionCtx();
   const key = session?.session_key;
-  const { data, error, updated, refresh } = usePolling(async () => key ? get<RaceControl>('race_control', { session_key: key }) : [], mode === 'proxy' ? 0 : live ? 5000 : 0, [key, live, mode]);
+  const { data, error, updated, refresh } = usePolling(async () => key && mode !== 'proxy' ? get<RaceControl>('race_control', { session_key: key }) : [], mode === 'proxy' ? 0 : live ? 5000 : 0, [key, live, mode]);
   const items = [...(mode === 'proxy' ? proxy?.race_control ?? [] : data ?? [])].sort((a, b) => b.date.localeCompare(a.date));
   return (
     <View style={s.c}>
       <SessionHeader updated={updated} />
-      <ErrorBanner msg={error} onRetry={refresh} hasData={!!data?.length} />
+      <ErrorBanner msg={mode === 'proxy' ? undefined : error} onRetry={refresh} hasData={!!data?.length} />
       <FlatList data={items} keyExtractor={(r, i) => `${r.date}-${i}`}
         ListEmptyComponent={<Text style={s.empty}>Geen wedstrijdleidingsberichten.</Text>}
         renderItem={({ item }) => {
