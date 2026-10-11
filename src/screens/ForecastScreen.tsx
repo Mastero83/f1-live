@@ -15,8 +15,8 @@ export default function ForecastScreen() {
   const total = proxy?.lap_count?.TotalLaps ?? Math.max(curLap, 1);
 
   const rows = useMemo(
-    () => predictOrder(drivers, live.stints, live.positions, live.intervals, curLap, total, session?.circuit_short_name),
-    [drivers, live.stints, live.positions, live.intervals, live.laps, curLap, total, session?.circuit_short_name],
+    () => predictOrder(drivers, live.stints, live.positions, live.intervals, curLap, total, session?.circuit_short_name, undefined, proxy?.timing_extra ?? [], live.laps),
+    [drivers, live.stints, live.positions, live.intervals, live.laps, curLap, total, session?.circuit_short_name, proxy?.timing_extra],
   );
 
   return (
@@ -50,11 +50,11 @@ export default function ForecastScreen() {
                     {r.compound && <View style={[s.tyre, { borderColor: TYRE[r.compound]?.c ?? '#777' }]}><Text style={[s.tyreT, { color: TYRE[r.compound]?.c ?? '#777' }]}>{TYRE[r.compound]?.l ?? '?'}</Text></View>}
                   </View>
                   <Text style={s.sub} numberOfLines={1}>
-                    {r.pitsLeft > 0 ? `nog ${r.pitsLeft} stop` : 'stops klaar'} · {TYRE[r.compound ?? '']?.l ?? '?'} {r.age} rd
+                    {r.dnf ? 'Uitgevallen (DNF)' : `${r.pitsLeft > 0 ? `nog ${r.pitsLeft} stop` : 'stops klaar'} · ${TYRE[r.compound ?? '']?.l ?? '?'} ${r.age} rd`}
                   </Text>
                 </View>
-                <Text style={s.now}>P{r.curPos}</Text>
-                <Text style={[s.delta, { color: aCol }]}>{arrow}</Text>
+                <Text style={s.now}>{r.dnf ? 'DNF' : `P${r.curPos}`}</Text>
+                <Text style={[s.delta, { color: r.dnf ? T.dim : aCol }]}>{r.dnf ? '' : arrow}</Text>
                 <Text style={[s.conf, { color: confCol }]}>{r.conf}</Text>
               </View>
             );
