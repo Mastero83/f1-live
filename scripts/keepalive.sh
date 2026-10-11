@@ -2,7 +2,7 @@
 # Keeps `expo start --tunnel` up; restarts if the public URL stops answering.
 cd /workspace/f1-live
 URL=https://fv0h4oa-anonymous-8081.exp.direct/proxy/health
-start() { pkill -f "expo start" ; pkill -f ngrok-bin ; sleep 2; CI=1 setsid nohup npx expo start --tunnel >> /tmp/expo.log 2>&1 < /dev/null & sleep 60; }
+start() { printf '{\n  "urlRandomness": "fv0h4oa"\n}\n' > .expo/settings.json; pkill -f "expo start" ; pkill -f ngrok-bin ; sleep 2; CI=1 setsid nohup npx expo start --tunnel >> /tmp/expo.log 2>&1 < /dev/null & sleep 60; }
 pgrep -f "expo start --tunnel" >/dev/null || start
 fails=0
 while true; do
