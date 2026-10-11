@@ -21,12 +21,12 @@ export async function get<T>(endpoint: string, params: Record<string, string | n
   return Array.isArray(data) ? (data as T[]) : [];
 }
 
-export type SessionStatus = 'Gepland' | 'Live' | 'Afgelopen';
+export type SessionStatus = 'Gepland' | 'Live' | 'Afgerond';
 export function sessionStatus(s: Session, now = Date.now()): SessionStatus {
   const start = Date.parse(s.date_start), end = Date.parse(s.date_end);
   if (now < start) return 'Gepland';
   if (now <= end + 15 * 60_000) return 'Live';
-  return 'Afgelopen';
+  return 'Afgerond';
 }
 
 /** Latest record per driver (data is chronological). */
@@ -83,3 +83,17 @@ export function buildLeaderboard(drivers: Driver[], positions: Position[], inter
 
 export interface Stint { driver_number: number; stint_number: number; lap_start: number | null; lap_end: number | null; compound: string | null; tyre_age_at_start: number | null; }
 export interface Pit { date: string; driver_number: number; lap_number: number; pit_duration: number | null; stop_duration?: number | null; lane_duration?: number | null; }
+
+export interface Meeting { meeting_key: number; meeting_name: string; meeting_official_name?: string; location: string; country_name: string; country_code: string; country_flag?: string | null; circuit_short_name: string; circuit_image?: string | null; date_start: string; date_end?: string | null; year: number; is_cancelled?: boolean; }
+export const SESSION_NL: Record<string, string> = {
+  'Practice 1': 'Vrije training 1', 'Practice 2': 'Vrije training 2', 'Practice 3': 'Vrije training 3',
+  'Sprint Qualifying': 'Sprintkwalificatie', 'Sprint Shootout': 'Sprintkwalificatie', Sprint: 'Sprint', Qualifying: 'Kwalificatie', Race: 'Race',
+  'Day 1': 'Testdag 1', 'Day 2': 'Testdag 2', 'Day 3': 'Testdag 3',
+};
+const TZ = 'Europe/Amsterdam';
+export const fmtDay = (iso: string) => new Date(iso).toLocaleDateString('nl-NL', { timeZone: TZ, weekday: 'short', day: 'numeric', month: 'short' });
+export const fmtTime = (iso: string) => new Date(iso).toLocaleTimeString('nl-NL', { timeZone: TZ, hour: '2-digit', minute: '2-digit' });
+export const fmtRange = (a: string, b?: string | null) => {
+  const o: Intl.DateTimeFormatOptions = { timeZone: TZ, day: 'numeric', month: 'short' };
+  return b ? `${new Date(a).toLocaleDateString('nl-NL', o)} – ${new Date(b).toLocaleDateString('nl-NL', o)}` : new Date(a).toLocaleDateString('nl-NL', o);
+};

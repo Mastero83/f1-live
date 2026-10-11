@@ -7,11 +7,11 @@ import { get, TeamRadio } from '../api';
 import SessionHeader from '../components/SessionHeader';
 
 export default function RadioScreen() {
-  const { session, drivers } = useSessionCtx();
+  const { session, drivers, live } = useSessionCtx();
   const key = session?.session_key;
   const [filter, setFilter] = useState<number | null>(null);
   const [playing, setPlaying] = useState<string | null>(null);
-  const { data, error, updated } = usePolling(async () => key ? get<TeamRadio>('team_radio', { session_key: key }) : [], 10_000, [key]);
+  const { data, error, updated } = usePolling(async () => key ? get<TeamRadio>('team_radio', { session_key: key }) : [], live ? 10_000 : 0, [key, live]);
 
   useEffect(() => () => { stop(); }, []);
 

@@ -12,7 +12,7 @@ const since = (field: string, d?: string): Record<string, string> => (d ? { [`${
 
 /** One shared poller for all tabs; every request after the first only asks for new records. */
 export function LiveDataProvider({ children }: { children: React.ReactNode }) {
-  const { session } = useSessionCtx();
+  const { session, live } = useSessionCtx();
   const key = session?.session_key;
   const cache = useRef<Cache>(fresh());
   const { data, error, updated, refresh } = usePolling(async () => {
@@ -39,7 +39,7 @@ export function LiveDataProvider({ children }: { children: React.ReactNode }) {
       for (const p of pits) { c.pits.set(`${p.driver_number}-${p.lap_number}`, p); if (!c.lastPit || p.date > c.lastPit) c.lastPit = p.date; }
     }
     return { positions: [...c.posLatest.values()], posHistory: c.posHist, intervals: [...c.ints.values()], laps: [...c.laps.values()], stints: c.stints, pits: [...c.pits.values()] };
-  }, 5000, [key]);
+  }, live ? 5000 : 0, [key, live]);
   const v: Live = { positions: [], posHistory: [], intervals: [], laps: [], stints: [], pits: [], ...data, updated, error, refresh };
   return <C.Provider value={v}>{children}</C.Provider>;
 }

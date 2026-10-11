@@ -13,9 +13,9 @@ const FLAG: Record<string, { c: string; nl: string }> = {
 const CAT: Record<string, string> = { Flag: 'Vlag', SafetyCar: 'Safety car', Drs: 'DRS', CarEvent: 'Auto', Other: 'Overig', SessionStatus: 'Sessiestatus' };
 
 export default function RaceControlScreen() {
-  const { session } = useSessionCtx();
+  const { session, live } = useSessionCtx();
   const key = session?.session_key;
-  const { data, error, updated } = usePolling(async () => key ? get<RaceControl>('race_control', { session_key: key }) : [], 5000, [key]);
+  const { data, error, updated } = usePolling(async () => key ? get<RaceControl>('race_control', { session_key: key }) : [], live ? 5000 : 0, [key, live]);
   const items = [...(data ?? [])].sort((a, b) => b.date.localeCompare(a.date));
   return (
     <View style={s.c}>
