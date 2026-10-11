@@ -3,7 +3,8 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Driver, Stint, Position, Lap } from '../api';
 import { T, TYRE, teamColour } from '../theme';
 
-export { forecast, Forecast } from '../forecastLogic';
+import { forecast, type Forecast } from '../forecastLogic';
+export { forecast, type Forecast } from '../forecastLogic';
 
 
 
