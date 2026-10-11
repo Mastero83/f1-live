@@ -9,14 +9,14 @@ import LeaderboardScreen from './src/screens/LeaderboardScreen';
 import RadioScreen from './src/screens/RadioScreen';
 import RaceControlScreen from './src/screens/RaceControlScreen';
 import AnalysisScreen from './src/screens/AnalysisScreen';
-import TyresScreen from './src/screens/TyresScreen';
+import ForecastScreen from './src/screens/ForecastScreen';
 import CalendarScreen from './src/screens/CalendarScreen';
 import { LiveDataProvider } from './src/LiveData';
 import { T } from './src/theme';
 
 type Target = number | 'latest';
 const Tab = createBottomTabNavigator();
-const TABS = ['Leaderboard', 'Analyse', 'Banden', 'Radio', 'RaceControl'];
+const TABS = ['Leaderboard', 'Analyse', 'Voorspelling', 'Radio', 'RaceControl'];
 const web = Platform.OS === 'web' ? (globalThis as any) : null;
 const params = () => new URLSearchParams((web?.location?.search as string | undefined) ?? '');
 const tabParam = params().get('tab');
@@ -62,7 +62,7 @@ export default function App() {
                 tabBarActiveTintColor: T.red, tabBarInactiveTintColor: '#777', tabBarStyle: { backgroundColor: '#111118', borderTopColor: T.border }, tabBarLabelStyle: { fontSize: 10, fontWeight: '700' } }}>
                 <Tab.Screen name="Leaderboard" component={LeaderboardScreen} options={{ title: 'Klassement', tabBarIcon: icon('🏁') }} />
                 <Tab.Screen name="Analyse" component={AnalysisScreen} options={{ title: 'Analyse', tabBarIcon: icon('📈') }} />
-                <Tab.Screen name="Banden" component={TyresScreen} options={{ title: 'Banden', tabBarIcon: icon('🛞') }} />
+                <Tab.Screen name="Voorspelling" component={ForecastScreen} options={{ title: 'Voorspelling', tabBarIcon: icon('🔮') }} />
                 <Tab.Screen name="Radio" component={RadioScreen} options={{ title: 'Teamradio', tabBarIcon: icon('📻') }} />
                 <Tab.Screen name="RaceControl" component={RaceControlScreen} options={{ title: 'Wedstrijdleiding', tabBarLabel: 'Race Control', tabBarIcon: icon('🚩') }} />
               </Tab.Navigator>

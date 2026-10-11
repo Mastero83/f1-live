@@ -25,7 +25,7 @@ export default function LeaderboardScreen() {
           {px?.overtake && (
             <View style={[s.ot, { borderColor: px.overtake.enabled ? '#4cd964' : T.border }]}>
               <Text style={[s.otT, { color: px.overtake.enabled ? '#4cd964' : T.sub }]}>⚡ Overtake-modus {px.overtake.enabled ? 'INGESCHAKELD' : 'UITGESCHAKELD'}</Text>
-              <Text style={s.otS}>Bron: wedstrijdleiding{px.overtake.lap ? ` · sinds ronde ${px.overtake.lap}` : ''}. Batterij/ERS per coureur is niet beschikbaar in de openbare live timing.</Text>
+              <Text style={s.otS}>Bron: wedstrijdleiding{px.overtake.lap ? ` · sinds ronde ${px.overtake.lap}` : ''}. ⚡ bij een coureur = Overtake actief (DriverRaceInfo). Batterij%/ERS staat niet in de feed.</Text>
             </View>
           )}
           <View style={s.head}>
@@ -35,11 +35,11 @@ export default function LeaderboardScreen() {
         </>}
         refreshControl={<RefreshControl refreshing={false} onRefresh={live.refresh} tintColor="#fff" />}
         ListEmptyComponent={<Text style={s.empty}>Nog geen posities beschikbaar.</Text>}
-        renderItem={({ item }) => <RowView r={item} tyre={tyre.get(item.driver_number)} trap={trap.get(item.driver_number)} />} />
+        renderItem={({ item }) => <RowView r={item} tyre={tyre.get(item.driver_number)} telem={trap.get(item.driver_number)} />} />
     </View>
   );
 }
-function RowView({ r, tyre, trap }: { r: Row; tyre?: string | null; trap?: { speed_trap: number | null; speed_trap_fastest: boolean } }) {
+function RowView({ r, tyre, telem }: { r: Row; tyre?: string | null; telem?: { speed_trap: number | null; speed_trap_fastest: boolean; speed?: number | null; rpm?: number | null; gear?: number | null; overtake_state?: number | null } }) {
   const colour = teamColour(r.driver?.team_colour);
   const t = tyre ? TYRE[tyre] : undefined;
   const p1 = r.position === 1;
@@ -53,7 +53,20 @@ function RowView({ r, tyre, trap }: { r: Row; tyre?: string | null; trap?: { spe
           {t && <View style={[s.tyre, { borderColor: t.c }]}><Text style={[s.tyreT, { color: t.c }]}>{t.l}</Text></View>}
         </View>
         <Text style={s.small} numberOfLines={1}>{r.driver?.team_name ?? ''}</Text>
-        <Text style={s.small}>Ronde {r.laps} · {r.lastLap}{trap?.speed_trap ? <Text style={trap.speed_trap_fastest ? { color: T.purple, fontWeight: '700' } : null}>{` · ${trap.speed_trap} km/u`}</Text> : null}</Text>
+        {(() => {
+          const liveSpd = telem?.speed != null && telem.speed > 0;
+          const spd = liveSpd ? telem!.speed! : telem?.speed_trap;
+          const ot = telem?.overtake_state === 1 || telem?.overtake_state === 2;
+          return (
+            <Text style={s.small}>
+              Ronde {r.laps} · {r.lastLap}
+              {spd != null ? <Text style={!liveSpd && telem?.speed_trap_fastest ? { color: T.purple, fontWeight: '700' } : null}>{` · ${spd} km/u`}</Text> : null}
+              {liveSpd && telem?.rpm != null ? ` · ${telem.rpm} tpm` : ''}
+              {liveSpd && telem?.gear != null && telem.gear > 0 ? ` · V${telem.gear}` : ''}
+              {ot ? <Text style={{ color: '#4cd964', fontWeight: '800' }}>{' · ⚡'}</Text> : null}
+            </Text>
+          );
+        })()}
       </View>
       <Text style={[s.num, p1 && { color: T.red, fontWeight: '800' }]}>{p1 && (r.gap === '+0.000' || r.gap === '' || r.gap === '–') ? 'Leider' : r.gap || '–'}</Text>
       <Text style={s.num}>{p1 ? '' : r.interval}</Text>

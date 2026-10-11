@@ -171,7 +171,7 @@ export interface ProxyState {
   source: string; connected: boolean; last_message: string | null; session: Session | null; session_status: string | null;
   track_status: { Status: string; Message: string } | null; lap_count: { CurrentLap: number; TotalLaps: number } | null;
   overtake?: { enabled: boolean; since: string | null; lap: number | null } | null;
-  timing_extra?: { driver_number: number; speed_trap: number | null; speed_trap_fastest: boolean }[];
+  timing_extra?: { driver_number: number; speed_trap: number | null; speed_trap_fastest: boolean; speed?: number | null; rpm?: number | null; gear?: number | null; overtake_state?: number | null }[];
   drivers: Driver[]; positions: Position[]; intervals: Interval[]; laps: Lap[]; stints: Stint[]; race_control: RaceControl[]; team_radio: (TeamRadio & Partial<Transcript>)[];
 }
 export interface Transcript { transcript: string | null; transcript_status: 'pending' | 'done' | 'error' }
