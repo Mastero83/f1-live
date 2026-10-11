@@ -21,12 +21,18 @@ export default function ForecastScreen() {
   const rows = useMemo(() => {
     const pf = forecast(drivers, live.stints, live.positions, curLap, total, session?.circuit_short_name);
     const pos = new Map(live.positions.map(p => [p.driver_number, p.position]));
-    const gap = new Map(live.intervals.map(i => [i.driver_number, typeof i.gap_to_leader === 'number' ? i.gap_to_leader : 0]));
-    const leaderGap = (n: number) => gap.get(n) ?? 0;
+    const gapMap = new Map(live.intervals.map(i => [i.driver_number, i.gap_to_leader]));
+    const leaderGap = (n: number, curPos: number) => {
+      const g = gapMap.get(n);
+      if (typeof g === 'number') return g;
+      // Lapped / unknown gap: keep current order with a large offset so they don't leapfrog
+      return 1000 + curPos * 30;
+    };
     // Projected race time offset vs leader: current gap + remaining pit losses
     const scored = pf.map(r => {
       const pitsLeft = r.mustStop ? 1 : 0;
-      const proj = leaderGap(r.driver.driver_number) + pitsLeft * PIT_LOSS;
+      const curPos = pos.get(r.driver.driver_number) ?? 99;
+      const proj = leaderGap(r.driver.driver_number, curPos) + pitsLeft * PIT_LOSS;
       // Soft tyre late in race: small pace penalty if very old
       const agePenalty = r.compound === 'SOFT' && r.age > 20 ? (r.age - 20) * 0.15 : r.compound === 'MEDIUM' && r.age > 30 ? (r.age - 30) * 0.1 : 0;
       return { ...r, curPos: pos.get(r.driver.driver_number) ?? 99, proj: proj + agePenalty, pitsLeft };
