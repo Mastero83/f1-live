@@ -3,7 +3,7 @@ import { FlatList, View, Text, StyleSheet, Pressable, ScrollView } from 'react-n
 import { play, stop } from '../player';
 import { useSessionCtx } from '../SessionContext';
 import { usePolling } from '../hooks';
-import { get, TeamRadio } from '../api';
+import { get, TeamRadio, getTranscripts } from '../api';
 import ErrorBanner from '../components/ErrorBanner';
 import SessionHeader from '../components/SessionHeader';
 
@@ -24,6 +24,13 @@ export default function RadioScreen() {
 
   const dmap = new Map(drivers.map(d => [d.driver_number, d]));
   const items = [...(mode === 'proxy' ? proxy?.team_radio ?? [] : data ?? [])].filter(r => filter == null || r.driver_number === filter).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 100);
+  // OpenF1 mode: transcribe on demand via the proxy (first 30 visible clips), poll until done
+  const want = mode === 'proxy' ? [] : items.slice(0, 30).map(i => i.recording_url).filter(u => u.startsWith('https://livetiming.formula1.com/static/'));
+  const tr = usePolling(async () => getTranscripts(want), 6000, [want.join('|')]);
+  const transcriptOf = (it: TeamRadio & { transcript?: string | null; transcript_status?: string }) => {
+    if (mode === 'proxy') return { status: it.transcript_status ?? 'pending', text: it.transcript ?? null };
+    const t = tr.data?.[it.recording_url]; return t ? { status: t.status, text: t.text } : { status: tr.error ? 'error' : 'pending', text: null };
+  };
   return (
     <View style={s.c}>
       <SessionHeader updated={updated} />
@@ -41,8 +48,11 @@ export default function RadioScreen() {
             <Pressable style={s.row} onPress={() => toggle(item.recording_url)}>
               <View style={[s.bar, { backgroundColor: d?.team_colour ? `#${d.team_colour}` : '#666' }]} />
               <View style={{ flex: 1 }}>
-                <Text style={s.acr}>{d?.name_acronym ?? `#${item.driver_number}`} <Text style={s.small}>{d?.team_name ?? ''}</Text></Text>
-                <Text style={s.small}>{new Date(item.date).toLocaleTimeString('nl-NL')}</Text>
+                <Text style={s.acr}>{d?.name_acronym ?? `#${item.driver_number}`} <Text style={s.small}>{d?.team_name ?? ''} · {new Date(item.date).toLocaleTimeString('nl-NL')}</Text></Text>
+                {(() => { const t = transcriptOf(item); return (
+                  <Text style={[s.quote, t.status !== 'done' || !t.text ? s.quoteDim : null]}>
+                    {t.status === 'pending' ? 'Bezig met uitschrijven…' : t.status === 'error' ? 'Uitschrijven niet gelukt' : t.text ? `“${t.text}”` : '(geen spraak herkend)'}
+                  </Text>); })()}
               </View>
               <Text style={s.play}>{on ? '■ Stop' : '▶ Afspelen'}</Text>
             </Pressable>
@@ -62,6 +72,7 @@ const s = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', padding: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#333' },
   bar: { width: 4, height: 32, borderRadius: 2, marginRight: 10 },
   acr: { color: '#fff', fontWeight: '700', fontSize: 16 }, small: { color: '#999', fontSize: 12, fontWeight: '400' },
-  play: { color: '#e10600', fontWeight: '700' },
+  play: { color: '#e10600', fontWeight: '700', marginLeft: 8 },
+  quote: { color: '#f4f4f6', fontSize: 14, marginTop: 4, lineHeight: 19 }, quoteDim: { color: '#777', fontStyle: 'italic' },
   err: { color: '#ff6b6b', padding: 8 }, empty: { color: '#888', padding: 20, textAlign: 'center' },
 });

@@ -170,7 +170,15 @@ export function proxyUrl(): string {
 export interface ProxyState {
   source: string; connected: boolean; last_message: string | null; session: Session | null; session_status: string | null;
   track_status: { Status: string; Message: string } | null; lap_count: { CurrentLap: number; TotalLaps: number } | null;
-  drivers: Driver[]; positions: Position[]; intervals: Interval[]; laps: Lap[]; stints: Stint[]; race_control: RaceControl[]; team_radio: TeamRadio[];
+  drivers: Driver[]; positions: Position[]; intervals: Interval[]; laps: Lap[]; stints: Stint[]; race_control: RaceControl[]; team_radio: (TeamRadio & Partial<Transcript>)[];
+}
+export interface Transcript { transcript: string | null; transcript_status: 'pending' | 'done' | 'error' }
+/** Ask the proxy to transcribe clips (cached server-side); returns current status per URL. */
+export async function getTranscripts(urls: string[]): Promise<Record<string, { status: Transcript['transcript_status']; text: string | null }>> {
+  if (!urls.length) return {};
+  const res = await fetch(`${proxyUrl()}/transcribe?${urls.map(u => 'url=' + encodeURIComponent(u)).join('&')}`);
+  if (!res.ok) throw new Error(`proxy HTTP ${res.status}`);
+  return res.json();
 }
 export async function getProxyState(): Promise<ProxyState> {
   const ctl = typeof AbortController !== 'undefined' ? new AbortController() : undefined;
