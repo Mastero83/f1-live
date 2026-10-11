@@ -2,28 +2,38 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useSessionCtx } from '../SessionContext';
 import { sessionStatus } from '../api';
+import { T } from '../theme';
 
 export default function SessionHeader({ updated }: { updated?: Date }) {
   const { session, error } = useSessionCtx();
   if (!session) return <View style={s.box}><Text style={s.sub}>{error ? `Fout: ${error}` : 'Sessie laden…'}</Text></View>;
   const st = sessionStatus(session);
-  const color = st === 'Live' ? '#e10600' : st === 'Gepland' ? '#f5a623' : '#888';
+  const color = st === 'Live' ? T.red : st === 'Gepland' ? '#f5a623' : '#44444f';
   return (
     <View style={s.box}>
       <View style={s.row}>
-        <Text style={s.title}>{session.session_name}</Text>
-        <Text style={[s.badge, { backgroundColor: color }]}>{st}</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={s.kicker}>{session.country_name.toUpperCase()} · {session.year ?? ''}</Text>
+          <Text style={s.title}>{session.session_name}</Text>
+          <Text style={s.sub}>{session.circuit_short_name} · {session.location}</Text>
+        </View>
+        <View style={[s.badge, { backgroundColor: color }]}>
+          {st === 'Live' && <View style={s.dot} />}
+          <Text style={s.badgeT}>{st.toUpperCase()}</Text>
+        </View>
       </View>
-      <Text style={s.sub}>{session.circuit_short_name} · {session.location}, {session.country_name}</Text>
-      <Text style={s.note}>Let op: de gratis OpenF1-data loopt enkele seconden tot minuten achter.{updated ? `  Bijgewerkt ${updated.toLocaleTimeString('nl-NL')}` : ''}</Text>
+      <Text style={s.note}>ⓘ Gratis OpenF1-data loopt enkele seconden tot minuten achter.{updated ? `  ·  ${updated.toLocaleTimeString('nl-NL')}` : ''}</Text>
     </View>
   );
 }
 const s = StyleSheet.create({
-  box: { padding: 12, backgroundColor: '#15151e', borderBottomWidth: 1, borderBottomColor: '#333' },
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  title: { color: '#fff', fontSize: 20, fontWeight: '700' },
-  badge: { color: '#fff', fontWeight: '700', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, overflow: 'hidden' },
-  sub: { color: '#ccc', marginTop: 2 },
-  note: { color: '#888', fontSize: 11, marginTop: 4 },
+  box: { margin: 10, marginBottom: 4, padding: 14, backgroundColor: T.card, borderRadius: T.radius, borderLeftWidth: 4, borderLeftColor: T.red },
+  row: { flexDirection: 'row', alignItems: 'center' },
+  kicker: { color: T.red, fontSize: 11, fontWeight: '800', letterSpacing: 1.5 },
+  title: { color: T.text, fontSize: 22, fontWeight: '800', marginTop: 2 },
+  sub: { color: T.sub, marginTop: 2, fontSize: 13 },
+  badge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
+  dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#fff', marginRight: 6 },
+  badgeT: { color: '#fff', fontWeight: '800', fontSize: 11, letterSpacing: 1 },
+  note: { color: T.dim, fontSize: 11, marginTop: 8 },
 });

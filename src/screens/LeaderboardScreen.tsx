@@ -1,74 +1,67 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import { FlatList, View, Text, StyleSheet, RefreshControl } from 'react-native';
 import { useSessionCtx } from '../SessionContext';
-import { usePolling } from '../hooks';
-import { get, buildLeaderboard, Position, Interval, Lap, Row } from '../api';
+import { useLive } from '../LiveData';
+import { buildLeaderboard, Row } from '../api';
 import SessionHeader from '../components/SessionHeader';
+import { T, teamColour, TYRE } from '../theme';
 
 export default function LeaderboardScreen() {
-  const { session, drivers } = useSessionCtx();
-  const key = session?.session_key;
-  // Incremental cache: only fetch records newer than what we already have.
-  const cache = useRef<{ key?: number; positions: Map<number, Position>; intervals: Map<number, Interval>; laps: Map<string, Lap>; lastPos?: string; lastInt?: string; maxLap: number }>({ positions: new Map(), intervals: new Map(), laps: new Map(), maxLap: 0 });
-  const { data, error, updated, refresh } = usePolling(async () => {
-    const c = cache.current;
-    if (c.key !== key) Object.assign(c, { key, positions: new Map(), intervals: new Map(), laps: new Map(), lastPos: undefined, lastInt: undefined, maxLap: 0 });
-    if (key) {
-      const since = (d?: string): Record<string, string> => (d ? { 'date>': d } : {});
-      const [positions, intervals, laps] = await Promise.all([
-        get<Position>('position', { session_key: key, ...since(c.lastPos) }),
-        get<Interval>('intervals', { session_key: key, ...since(c.lastInt) }),
-        // laps get updated after completion, so re-fetch the last 2 laps
-        get<Lap>('laps', { session_key: key, ...(c.maxLap > 1 ? { 'lap_number>': c.maxLap - 1 } : {}) }),
-      ]);
-      for (const p of positions) { const o = c.positions.get(p.driver_number); if (!o || p.date >= o.date) c.positions.set(p.driver_number, p); if (!c.lastPos || p.date > c.lastPos) c.lastPos = p.date; }
-      for (const i of intervals) { const o = c.intervals.get(i.driver_number); if (!o || i.date >= o.date) c.intervals.set(i.driver_number, i); if (!c.lastInt || i.date > c.lastInt) c.lastInt = i.date; }
-      for (const l of laps) { c.laps.set(`${l.driver_number}-${l.lap_number}`, l); if (l.lap_number > c.maxLap) c.maxLap = l.lap_number; }
-    }
-    return { positions: [...c.positions.values()], intervals: [...c.intervals.values()], laps: [...c.laps.values()] };
-  }, 5000, [key]);
-  const rows = data ? buildLeaderboard(drivers, data.positions, data.intervals, data.laps) : [];
-  const isRace = (data?.intervals.length ?? 0) > 0;
+  const { drivers } = useSessionCtx();
+  const live = useLive();
+  const rows = buildLeaderboard(drivers, live.positions, live.intervals, live.laps);
+  const isRace = live.intervals.length > 0;
+  const tyre = new Map<number, string | null>();
+  for (const st of [...live.stints].sort((a, b) => a.stint_number - b.stint_number)) tyre.set(st.driver_number, st.compound);
   return (
     <View style={s.c}>
-      <SessionHeader updated={updated} />
-      {error && <Text style={s.err}>Fout: {error}</Text>}
-      <View style={[s.row, s.head]}>
-        <Text style={[s.pos, s.h]}>P</Text><Text style={[s.name, s.h]}>Coureur</Text>
-        <Text style={[s.num, s.h]}>{isRace ? 'Achterstand' : 'Snelste / Δ'}</Text>
-        <Text style={[s.num, s.h]}>{isRace ? 'Interval' : 'Δ voorganger'}</Text>
-      </View>
       <FlatList data={rows} keyExtractor={r => String(r.driver_number)}
-        refreshControl={<RefreshControl refreshing={false} onRefresh={refresh} tintColor="#fff" />}
+        ListHeaderComponent={<>
+          <SessionHeader updated={live.updated} />
+          {live.error && <Text style={s.err}>Fout: {live.error}</Text>}
+          <View style={s.head}>
+            <Text style={[s.h, { width: 34 }]}>POS</Text><Text style={[s.h, { flex: 1 }]}>COUREUR</Text>
+            <Text style={[s.h, s.hn]}>{isRace ? 'LEIDER' : 'SNELSTE'}</Text><Text style={[s.h, s.hn]}>{isRace ? 'INTERVAL' : 'Δ VOOR'}</Text>
+          </View>
+        </>}
+        refreshControl={<RefreshControl refreshing={false} onRefresh={live.refresh} tintColor="#fff" />}
         ListEmptyComponent={<Text style={s.empty}>Nog geen posities beschikbaar.</Text>}
-        renderItem={({ item }) => <RowView r={item} />} />
+        renderItem={({ item }) => <RowView r={item} tyre={tyre.get(item.driver_number)} />} />
     </View>
   );
 }
-function RowView({ r }: { r: Row }) {
-  const colour = r.driver?.team_colour ? `#${r.driver.team_colour}` : '#666';
+function RowView({ r, tyre }: { r: Row; tyre?: string | null }) {
+  const colour = teamColour(r.driver?.team_colour);
+  const t = tyre ? TYRE[tyre] : undefined;
+  const p1 = r.position === 1;
   return (
-    <View style={s.row}>
-      <Text style={s.pos}>{r.position}</Text>
+    <View style={s.card}>
+      <View style={[s.posBox, p1 && { backgroundColor: T.red }]}><Text style={s.pos}>{r.position}</Text></View>
       <View style={[s.bar, { backgroundColor: colour }]} />
-      <View style={s.name}>
-        <Text style={s.acr}>{r.driver?.name_acronym ?? `#${r.driver_number}`}</Text>
-        <Text style={s.small} numberOfLines={1}>{r.driver?.full_name ?? ''} · {r.driver?.team_name ?? ''}</Text>
-        <Text style={s.small}>Ronde {r.laps} · laatste {r.lastLap}</Text>
+      <View style={{ flex: 1 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Text style={s.acr}>{r.driver?.name_acronym ?? `#${r.driver_number}`}</Text>
+          {t && <View style={[s.tyre, { borderColor: t.c }]}><Text style={[s.tyreT, { color: t.c }]}>{t.l}</Text></View>}
+        </View>
+        <Text style={s.small} numberOfLines={1}>{r.driver?.team_name ?? ''}</Text>
+        <Text style={s.small}>Ronde {r.laps} · {r.lastLap}</Text>
       </View>
-      <Text style={s.num}>{r.position === 1 && r.gap.startsWith('+') ? 'Leider' : r.gap || (r.position === 1 ? 'Leider' : '–')}</Text>
-      <Text style={s.num}>{r.position === 1 ? '' : r.interval}</Text>
+      <Text style={[s.num, p1 && { color: T.red, fontWeight: '800' }]}>{p1 && (r.gap === '+0.000' || r.gap === '') ? 'Leider' : r.gap || '–'}</Text>
+      <Text style={s.num}>{p1 ? '' : r.interval}</Text>
     </View>
   );
 }
 const s = StyleSheet.create({
-  c: { flex: 1, backgroundColor: '#0b0b10' },
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, paddingHorizontal: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#333' },
-  head: { backgroundColor: '#1d1d27' }, h: { color: '#aaa', fontSize: 11, fontWeight: '600' },
-  pos: { width: 26, color: '#fff', fontWeight: '700', fontSize: 16, textAlign: 'center' },
-  bar: { width: 4, height: 36, borderRadius: 2, marginHorizontal: 6 },
-  name: { flex: 1 }, acr: { color: '#fff', fontWeight: '700', fontSize: 16 },
-  small: { color: '#999', fontSize: 11 },
-  num: { width: 82, color: '#eee', textAlign: 'right', fontVariant: ['tabular-nums'], fontSize: 13 },
-  err: { color: '#ff6b6b', padding: 8 }, empty: { color: '#888', padding: 20, textAlign: 'center' },
+  c: { flex: 1, backgroundColor: T.bg },
+  head: { flexDirection: 'row', paddingHorizontal: 16, paddingTop: 10, paddingBottom: 4 },
+  h: { color: T.dim, fontSize: 10, fontWeight: '800', letterSpacing: 1 }, hn: { width: 76, textAlign: 'right' },
+  card: { flexDirection: 'row', alignItems: 'center', backgroundColor: T.card, marginHorizontal: 10, marginVertical: 3, borderRadius: 10, paddingVertical: 9, paddingHorizontal: 8 },
+  posBox: { width: 28, height: 28, borderRadius: 6, backgroundColor: T.card2, alignItems: 'center', justifyContent: 'center' },
+  pos: { color: T.text, fontWeight: '800', fontSize: 14 },
+  bar: { width: 4, height: 34, borderRadius: 2, marginHorizontal: 8 },
+  acr: { color: T.text, fontWeight: '800', fontSize: 16, letterSpacing: 0.5 },
+  tyre: { width: 18, height: 18, borderRadius: 9, borderWidth: 2.5, alignItems: 'center', justifyContent: 'center' }, tyreT: { fontSize: 9, fontWeight: '900' },
+  small: { color: T.sub, fontSize: 11 },
+  num: { width: 76, color: T.text, textAlign: 'right', fontVariant: ['tabular-nums'], fontSize: 13, fontWeight: '600' },
+  err: { color: '#ff6b6b', paddingHorizontal: 12 }, empty: { color: T.dim, padding: 20, textAlign: 'center' },
 });

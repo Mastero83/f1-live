@@ -15,7 +15,10 @@ export function usePolling<T>(fn: () => Promise<T>, intervalMs: number, deps: un
 }
 
 export function useSession() {
-  return usePolling(async () => (await get<Session>('sessions', { session_key: 'latest' }))[0], 60_000);
+  // Web test override: ?session=9839 pins a past session.
+  const loc = (globalThis as any).location as { search?: string } | undefined;
+  const pinned = loc?.search ? new URLSearchParams(loc.search).get('session') : null;
+  return usePolling(async () => (await get<Session>('sessions', { session_key: pinned ?? 'latest' }))[0], 60_000);
 }
 
 export function useDrivers(sessionKey?: number) {
