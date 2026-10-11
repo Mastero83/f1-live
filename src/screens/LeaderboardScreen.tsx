@@ -29,8 +29,10 @@ export default function LeaderboardScreen() {
               <Text style={s.otS}>Bron: wedstrijdleiding{px.overtake.lap ? ` · sinds ronde ${px.overtake.lap}` : ''}. Per-coureur OvertakeState is nu overal 'beschikbaar' (1); actief (2) nog niet gezien. Batterij%/ERS staat niet in de feed.</Text>
             </View>
           )}
+          <Text style={s.legend}>Snelheid · Versnelling · Toerental</Text>
           <View style={s.head}>
             <Text style={[s.h, { width: 34 }]}>POS</Text><Text style={[s.h, { flex: 1 }]}>COUREUR</Text>
+            <Text style={[s.h, { width: 80, textAlign: 'center' }]}>TELEMETRIE</Text>
             <Text style={[s.h, s.hn]}>{isRace ? 'LEIDER' : 'SNELSTE'}</Text><Text style={[s.h, s.hn]}>{isRace ? 'INTERVAL' : 'Δ VOOR'}</Text>
           </View>
         </>}
@@ -64,6 +66,7 @@ function RowView({ r, tyre, telem }: { r: Row; tyre?: string | null; telem?: { s
 }
 const s = StyleSheet.create({
   c: { flex: 1, backgroundColor: T.bg },
+  legend: { color: T.dim, fontSize: 10, fontWeight: '700', letterSpacing: 0.3, paddingHorizontal: 16, paddingTop: 6, paddingBottom: 2 },
   head: { flexDirection: 'row', paddingHorizontal: 16, paddingTop: 10, paddingBottom: 4 },
   h: { color: T.dim, fontSize: 10, fontWeight: '800', letterSpacing: 1 }, hn: { width: 62, textAlign: 'right' },
   card: { flexDirection: 'row', alignItems: 'center', backgroundColor: T.card, marginHorizontal: 10, marginVertical: 3, borderRadius: 10, paddingVertical: 9, paddingHorizontal: 8 },
