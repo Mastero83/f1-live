@@ -76,7 +76,12 @@ export default function CalendarScreen({ onOpen }: { onOpen: (target: number | '
         </View>
       </View>
       <ScrollView ref={scroll} contentContainerStyle={{ paddingBottom: 30 }}>
-        <ErrorBanner msg={error} onRetry={refresh} hasData={!!data} />
+        {error && !pxLive && <ErrorBanner msg={error} onRetry={refresh} hasData={!!data} />}
+        {error && pxLive && (
+          <View style={s.soft}>
+            <Text style={s.softT}>Kalender tijdelijk offline (OpenF1 geblokkeerd tijdens live sessie). Gebruik de rode knop hierboven voor de race.</Text>
+          </View>
+        )}
         {!data && !error && <ActivityIndicator color={T.red} style={{ marginTop: 40 }} />}
         {data && meetings.length === 0 && <Text style={s.empty}>Geen kalender voor {year}.</Text>}
         {meetings.map(({ m, sessions }) => {
@@ -143,6 +148,7 @@ const s = StyleSheet.create({
   sRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: T.border, gap: 8, backgroundColor: '#13131a' },
   sDay: { color: T.sub, fontSize: 12, textTransform: 'capitalize' }, sTime: { color: T.text, fontWeight: '800', fontSize: 15, fontVariant: ['tabular-nums'] },
   sName: { flex: 1, color: T.text, fontWeight: '600', fontSize: 14 },
+  soft: { marginHorizontal: 10, marginBottom: 6, padding: 10, borderRadius: 10, backgroundColor: T.card, borderWidth: 1, borderColor: T.border }, softT: { color: T.sub, fontSize: 12, lineHeight: 17 },
   err: { color: '#ff6b6b', padding: 12 }, empty: { color: T.dim, padding: 16, textAlign: 'center' },
   foot: { color: T.dim, fontSize: 11, textAlign: 'center', marginTop: 12 },
 });
