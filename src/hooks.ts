@@ -24,8 +24,8 @@ export function usePolling<T>(fn: () => Promise<T>, intervalMs: number, deps: un
   return { data, error, updated, refresh: run };
 }
 
-export function useSession(target: number | 'latest') {
-  return usePolling(async () => (await get<Session>('sessions', { session_key: target }))[0], target === 'latest' ? 60_000 : 0, [target]);
+export function useSession(target: number | 'latest', skip?: () => boolean) {
+  return usePolling(async () => (skip?.() ? undefined : (await get<Session>('sessions', { session_key: target }))[0]), target === 'latest' ? 60_000 : 0, [target]);
 }
 
 export function useDrivers(sessionKey?: number, intervalMs = 120_000) {

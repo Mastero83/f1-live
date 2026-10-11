@@ -10,9 +10,10 @@ import { useSession, useDrivers, usePolling } from './hooks';
 interface Ctx { session?: Session; drivers: Driver[]; error?: string; live: boolean; refresh: () => void; mode: 'openf1' | 'proxy'; proxy?: ProxyState; finished: boolean; archive: boolean }
 const C = createContext<Ctx>({ drivers: [], live: true, refresh: () => {}, mode: 'openf1', finished: false, archive: false });
 export function SessionProvider({ target, children }: { target: number | 'latest'; children: React.ReactNode }) {
-  const s = useSession(target);
+  const archivedRef = useRef(false);
+  const s = useSession(target, () => archivedRef.current);
   const driversRef = useRef(false);
-  const openLive = target === 'latest' || !s.data || sessionStatus(s.data) !== 'Afgerond';
+  const openLive = target === 'latest' || ((!s.data || sessionStatus(s.data) !== 'Afgerond') && !archivedRef.current);
   // Proxy is only relevant for live/latest sessions
   const p = usePolling(async () => (openLive ? getProxyState() : undefined), openLive ? 3000 : 0, [openLive]);
   const px = p.data;
@@ -23,6 +24,7 @@ export function SessionProvider({ target, children }: { target: number | 'latest
   const wantArchive = typeof target === 'number' && !(px?.session?.session_key === target && sessionStatus(px.session) !== 'Afgerond' && px.session_status !== 'Finalised' && px.session_status !== 'Ends')
     && (!s.data || sessionStatus(s.data) === 'Afgerond');
   const a = usePolling(async () => (wantArchive ? getArchiveState(target as number, s.data?.year) : undefined), 0, [wantArchive, target]);
+  archivedRef.current = typeof target === 'number' && !!a.data?.drivers?.length;
   const d = useDrivers(wantArchive && a.data ? undefined : s.data?.session_key, openLive ? 120_000 : 0);
   driversRef.current = !!d.data?.length && !d.error;
   if (useProxy && !(wantArchive && a.data)) {
