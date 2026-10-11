@@ -47,7 +47,7 @@ function RowView({ r, tyre }: { r: Row; tyre?: string | null }) {
         <Text style={s.small} numberOfLines={1}>{r.driver?.team_name ?? ''}</Text>
         <Text style={s.small}>Ronde {r.laps} · {r.lastLap}</Text>
       </View>
-      <Text style={[s.num, p1 && { color: T.red, fontWeight: '800' }]}>{p1 && (r.gap === '+0.000' || r.gap === '') ? 'Leider' : r.gap || '–'}</Text>
+      <Text style={[s.num, p1 && { color: T.red, fontWeight: '800' }]}>{p1 && (r.gap === '+0.000' || r.gap === '' || r.gap === '–') ? 'Leider' : r.gap || '–'}</Text>
       <Text style={s.num}>{p1 ? '' : r.interval}</Text>
     </View>
   );
