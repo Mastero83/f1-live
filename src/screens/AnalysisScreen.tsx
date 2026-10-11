@@ -5,13 +5,15 @@ import { useSessionCtx } from '../SessionContext';
 import { useLive } from '../LiveData';
 import { fmtLap, Lap, Position } from '../api';
 import ErrorBanner from '../components/ErrorBanner';
+import PitForecast from '../components/PitForecast';
 import SessionHeader from '../components/SessionHeader';
 import { T, teamColour } from '../theme';
 
 const median = (a: number[]) => { if (!a.length) return NaN; const s = [...a].sort((x, y) => x - y); return s[Math.floor(s.length / 2)]; };
 
 export default function AnalysisScreen() {
-  const { drivers } = useSessionCtx();
+  const { drivers, proxy: proxyRaw, mode, session } = useSessionCtx();
+  const proxy = mode === 'proxy' ? proxyRaw : undefined;
   const live = useLive();
   const { width } = useWindowDimensions();
   const [sel, setSel] = useState<number[]>([]);
@@ -80,18 +82,9 @@ export default function AnalysisScreen() {
         </View>
 
         <View style={s.card}>
-          <Text style={s.h}>POSITIEVERLOOP</Text>
-          {allT.length < 2 ? <Text style={s.empty}>Nog geen positiedata.</Text> : (
-            <Svg width={W - 24} height={H}>
-              {[1, 5, 10, 15, 20].map(p => <React.Fragment key={p}><Line x1={P} x2={W} y1={py(p)} y2={py(p)} stroke={T.border} strokeWidth={1} /><SvgText x={6} y={py(p) + 3} fill={T.dim} fontSize={9}>P{p}</SvgText></React.Fragment>)}
-              {shown.map(st => {
-                const pts2: string[] = []; let last: number | undefined;
-                for (const p of st.ph) { const tx = px(Date.parse(p.date)); if (last != null) pts2.push(`${tx},${py(last)}`); pts2.push(`${tx},${py(p.position)}`); last = p.position; }
-                if (last != null) pts2.push(`${px(t1)},${py(last)}`);
-                return <Polyline key={st.d.driver_number} fill="none" stroke={teamColour(st.d.team_colour)} strokeWidth={2} points={pts2.join(' ')} />;
-              })}
-            </Svg>
-          )}
+          <Text style={s.h}>PITSTOP-VOORSPELLING</Text>
+          <PitForecast drivers={drivers} stints={live.stints} positions={live.positions} laps={live.laps}
+            curLap={proxy?.lap_count?.CurrentLap} total={proxy?.lap_count?.TotalLaps} circuit={session?.circuit_short_name} />
         </View>
 
         <View style={s.card}>
