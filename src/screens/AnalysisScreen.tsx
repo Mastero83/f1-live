@@ -19,7 +19,7 @@ export default function AnalysisScreen() {
     const byDriver = new Map<number, Lap[]>();
     for (const l of live.laps) { if (!byDriver.has(l.driver_number)) byDriver.set(l.driver_number, []); byDriver.get(l.driver_number)!.push(l); }
     const all = live.laps.map(l => l.lap_duration).filter((x): x is number => x != null);
-    const cutoff = median(all) * 1.07; // drop pit/SC/out laps
+    const cutoff = Math.min(median(all), ...all) * 1.07; // drop pit/SC/out/cool-down laps
     const posHist = new Map<number, Position[]>();
     for (const p of live.posHistory) { if (!posHist.has(p.driver_number)) posHist.set(p.driver_number, []); posHist.get(p.driver_number)!.push(p); }
     const res = drivers.map(d => {
