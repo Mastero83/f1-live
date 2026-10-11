@@ -47,7 +47,7 @@ export class ApiError extends Error { constructor(public kind: 'blocked' | 'netw
 export function friendlyError(e: unknown): string {
   if (e instanceof ApiError && e.kind === 'blocked') return 'OpenF1 blokkeert de gratis API tijdens een live F1-sessie (ook oude data). Na afloop van de sessie werkt alles weer. Je ziet de laatst opgeslagen gegevens.';
   if (e instanceof ApiError && e.kind === 'http') return `OpenF1 gaf een fout (${e.message}). We proberen het automatisch opnieuw.`;
-  return 'Geen verbinding met OpenF1 (geblokkeerd tijdens live sessie of netwerkfout). We proberen het automatisch opnieuw.';
+  return 'OpenF1 weigert momenteel de verbinding. Tijdens een live F1-sessie is álle OpenF1-data (ook oude races) alleen voor betalende gebruikers; na afloop van de sessie werkt de app weer. Anders: controleer je internetverbinding. We proberen het automatisch opnieuw.';
 }
 
 export async function get<T>(endpoint: string, params: Record<string, string | number>): Promise<T[]> {
