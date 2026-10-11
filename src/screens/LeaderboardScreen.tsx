@@ -25,7 +25,7 @@ export default function LeaderboardScreen() {
           {px?.overtake && (
             <View style={[s.ot, { borderColor: px.overtake.enabled ? '#4cd964' : T.border }]}>
               <Text style={[s.otT, { color: px.overtake.enabled ? '#4cd964' : T.sub }]}>⚡ Overtake-modus {px.overtake.enabled ? 'INGESCHAKELD' : 'UITGESCHAKELD'}</Text>
-              <Text style={s.otS}>Bron: wedstrijdleiding{px.overtake.lap ? ` · sinds ronde ${px.overtake.lap}` : ''}. ⚡ bij een coureur = Overtake actief (DriverRaceInfo). Batterij%/ERS staat niet in de feed.</Text>
+              <Text style={s.otS}>Bron: wedstrijdleiding{px.overtake.lap ? ` · sinds ronde ${px.overtake.lap}` : ''}. Per-coureur OvertakeState is nu overal 'beschikbaar' (1); actief (2) nog niet gezien. Batterij%/ERS staat niet in de feed.</Text>
             </View>
           )}
           <View style={s.head}>
@@ -56,7 +56,7 @@ function RowView({ r, tyre, telem }: { r: Row; tyre?: string | null; telem?: { s
         {(() => {
           const liveSpd = telem?.speed != null && telem.speed > 0;
           const spd = liveSpd ? telem!.speed! : telem?.speed_trap;
-          const ot = telem?.overtake_state === 1 || telem?.overtake_state === 2;
+          const ot = telem?.overtake_state === 2; // 1=available, 2=active (observed)
           return (
             <Text style={s.small}>
               Ronde {r.laps} · {r.lastLap}
