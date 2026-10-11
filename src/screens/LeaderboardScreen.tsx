@@ -8,7 +8,9 @@ import SessionHeader from '../components/SessionHeader';
 import { T, teamColour, TYRE } from '../theme';
 
 export default function LeaderboardScreen() {
-  const { drivers } = useSessionCtx();
+  const { drivers, mode, proxy } = useSessionCtx();
+  const px = mode === 'proxy' ? proxy : undefined;
+  const trap = new Map((px?.timing_extra ?? []).map(e => [e.driver_number, e]));
   const live = useLive();
   const rows = buildLeaderboard(drivers, live.positions, live.intervals, live.laps);
   const isRace = live.intervals.length > 0;
@@ -20,6 +22,12 @@ export default function LeaderboardScreen() {
         ListHeaderComponent={<>
           <SessionHeader updated={live.updated} />
           <ErrorBanner msg={live.error} onRetry={live.refresh} hasData={rows.length > 0} />
+          {px?.overtake && (
+            <View style={[s.ot, { borderColor: px.overtake.enabled ? '#4cd964' : T.border }]}>
+              <Text style={[s.otT, { color: px.overtake.enabled ? '#4cd964' : T.sub }]}>⚡ Overtake-modus {px.overtake.enabled ? 'INGESCHAKELD' : 'UITGESCHAKELD'}</Text>
+              <Text style={s.otS}>Bron: wedstrijdleiding{px.overtake.lap ? ` · sinds ronde ${px.overtake.lap}` : ''}. Batterij/ERS per coureur is niet beschikbaar in de openbare live timing.</Text>
+            </View>
+          )}
           <View style={s.head}>
             <Text style={[s.h, { width: 34 }]}>POS</Text><Text style={[s.h, { flex: 1 }]}>COUREUR</Text>
             <Text style={[s.h, s.hn]}>{isRace ? 'LEIDER' : 'SNELSTE'}</Text><Text style={[s.h, s.hn]}>{isRace ? 'INTERVAL' : 'Δ VOOR'}</Text>
@@ -27,11 +35,11 @@ export default function LeaderboardScreen() {
         </>}
         refreshControl={<RefreshControl refreshing={false} onRefresh={live.refresh} tintColor="#fff" />}
         ListEmptyComponent={<Text style={s.empty}>Nog geen posities beschikbaar.</Text>}
-        renderItem={({ item }) => <RowView r={item} tyre={tyre.get(item.driver_number)} />} />
+        renderItem={({ item }) => <RowView r={item} tyre={tyre.get(item.driver_number)} trap={trap.get(item.driver_number)} />} />
     </View>
   );
 }
-function RowView({ r, tyre }: { r: Row; tyre?: string | null }) {
+function RowView({ r, tyre, trap }: { r: Row; tyre?: string | null; trap?: { speed_trap: number | null; speed_trap_fastest: boolean } }) {
   const colour = teamColour(r.driver?.team_colour);
   const t = tyre ? TYRE[tyre] : undefined;
   const p1 = r.position === 1;
@@ -45,7 +53,7 @@ function RowView({ r, tyre }: { r: Row; tyre?: string | null }) {
           {t && <View style={[s.tyre, { borderColor: t.c }]}><Text style={[s.tyreT, { color: t.c }]}>{t.l}</Text></View>}
         </View>
         <Text style={s.small} numberOfLines={1}>{r.driver?.team_name ?? ''}</Text>
-        <Text style={s.small}>Ronde {r.laps} · {r.lastLap}</Text>
+        <Text style={s.small}>Ronde {r.laps} · {r.lastLap}{trap?.speed_trap ? <Text style={trap.speed_trap_fastest ? { color: T.purple, fontWeight: '700' } : null}>{` · ${trap.speed_trap} km/u`}</Text> : null}</Text>
       </View>
       <Text style={[s.num, p1 && { color: T.red, fontWeight: '800' }]}>{p1 && (r.gap === '+0.000' || r.gap === '' || r.gap === '–') ? 'Leider' : r.gap || '–'}</Text>
       <Text style={s.num}>{p1 ? '' : r.interval}</Text>
@@ -64,5 +72,7 @@ const s = StyleSheet.create({
   tyre: { width: 18, height: 18, borderRadius: 9, borderWidth: 2.5, alignItems: 'center', justifyContent: 'center' }, tyreT: { fontSize: 9, fontWeight: '900' },
   small: { color: T.sub, fontSize: 11 },
   num: { width: 76, color: T.text, textAlign: 'right', fontVariant: ['tabular-nums'], fontSize: 13, fontWeight: '600' },
+  ot: { marginHorizontal: 10, marginTop: 4, padding: 10, borderRadius: 10, borderWidth: 1, backgroundColor: T.card },
+  otT: { fontWeight: '800', fontSize: 13 }, otS: { color: T.dim, fontSize: 10, marginTop: 2 },
   err: { color: '#ff6b6b', paddingHorizontal: 12 }, empty: { color: T.dim, padding: 20, textAlign: 'center' },
 });
