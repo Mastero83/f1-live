@@ -3,6 +3,9 @@ import { ScrollView, View, Text, StyleSheet, Pressable, Image, ActivityIndicator
 import { usePolling } from '../hooks';
 import { get, getProxyState, Meeting, Session, sessionStatus, SESSION_NL, fmtDay, fmtTime, fmtRange } from '../api';
 import { T } from '../theme';
+import SeasonOverview from '../components/SeasonOverview';
+// Season overview stays on top; tapping a GP in the timeline jumps to it.
+const NO_AUTOSCROLL: boolean = true;
 import ErrorBanner from '../components/ErrorBanner';
 
 const BADGE = { Live: { bg: T.red, t: 'LIVE' }, Gepland: { bg: '#2d2d3a', t: 'GEPLAND' }, Afgerond: { bg: '#1f3a2a', t: 'AFGEROND' } } as const;
@@ -37,7 +40,7 @@ export default function CalendarScreen({ onOpen }: { onOpen: (target: number | '
   useEffect(() => { if (focusKey != null) setOpen(o => new Set(o).add(focusKey)); }, [focusKey]);
   const onLayoutMeeting = (key: number, y: number) => { ys.current.set(key, y); tryScroll(); };
   const tryScroll = () => {
-    if (focusKey == null || scrolledFor.current === focusKey) return;
+    if (NO_AUTOSCROLL || focusKey == null || scrolledFor.current === focusKey) return;
     const y = ys.current.get(focusKey);
     if (y == null || y === 0) return;
     scrolledFor.current = focusKey;
@@ -82,6 +85,7 @@ export default function CalendarScreen({ onOpen }: { onOpen: (target: number | '
             <Text style={s.softT}>Kalender tijdelijk offline (OpenF1 geblokkeerd tijdens live sessie). Gebruik de rode knop hierboven voor de race.</Text>
           </View>
         )}
+        <SeasonOverview year={year} onPick={k => { setOpen(o => new Set(o).add(k)); const y = ys.current.get(k); if (y != null) scroll.current?.scrollTo({ y: Math.max(0, y - 8), animated: true }); }} />
         {!data && !error && <ActivityIndicator color={T.red} style={{ marginTop: 40 }} />}
         {data && meetings.length === 0 && <Text style={s.empty}>Geen kalender voor {year}.</Text>}
         {meetings.map(({ m, sessions }) => {

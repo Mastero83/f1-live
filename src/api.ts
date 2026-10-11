@@ -211,3 +211,25 @@ export async function getArchiveState(key: number, year?: number): Promise<Proxy
     throw e;
   }
 }
+
+export interface SeasonDriver { driver_number: number; position: number; points: number; name_acronym: string; full_name?: string; team_name: string | null; team_colour: string | null; wins: number; podiums: number; sprint_wins: number }
+export interface SeasonRound { round: number | null; meeting_key: number; name: string; country_code: string; country_name: string; flag: string | null; circuit: string; date_start: string; race_start: string | null; cancelled: boolean; sprint: boolean; status: 'done' | 'upcoming' | 'cancelled' | 'unknown'; winner: { name_acronym: string; team_colour: string | null; team_name: string | null } | null; podium: string[] | null }
+export interface Season { year: number; generated: string; standings_source: string; total_rounds: number; done_rounds: number; next: SeasonRound | null; rounds: SeasonRound[]; driver_standings: SeasonDriver[]; team_standings: { team_name: string; position: number; points: number; team_colour: string | null }[] }
+/** Season overview from our proxy (server-side cached); last good copy kept in localStorage. */
+export async function getSeason(year: number): Promise<Season> {
+  const ck = `f1season:${year}`;
+  try {
+    const ctl = typeof AbortController !== 'undefined' ? new AbortController() : undefined;
+    const t = setTimeout(() => ctl?.abort(), 90_000);
+    try {
+      const res = await fetch(`${proxyUrl()}/season?year=${year}`, { signal: ctl?.signal });
+      if (!res.ok) throw new Error(`seizoen HTTP ${res.status}`);
+      const st = (await res.json()) as Season;
+      try { localStorage.setItem(ck, JSON.stringify(st)); } catch { /* */ }
+      return st;
+    } finally { clearTimeout(t); }
+  } catch (e) {
+    try { const c = localStorage.getItem(ck); if (c) return JSON.parse(c) as Season; } catch { /* */ }
+    throw e;
+  }
+}
