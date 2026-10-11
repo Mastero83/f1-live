@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": "F1 Live",
+    "slug": "f1-live",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "name": "F1 Live",
+      "shortName": "F1 Live",
+      "themeColor": "#e10600",
+      "backgroundColor": "#0b0b10",
+      "lang": "nl"
+    },
+    "experiments": {
+      "baseUrl": "/f1-live"
+    }
+  }
+}
