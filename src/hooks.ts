@@ -28,6 +28,6 @@ export function useSession(target: number | 'latest') {
   return usePolling(async () => (await get<Session>('sessions', { session_key: target }))[0], target === 'latest' ? 60_000 : 0, [target]);
 }
 
-export function useDrivers(sessionKey?: number) {
-  return usePolling(async () => sessionKey ? get<Driver>('drivers', { session_key: sessionKey }) : [], 120_000, [sessionKey]);
+export function useDrivers(sessionKey?: number, intervalMs = 120_000) {
+  return usePolling(async () => sessionKey ? get<Driver>('drivers', { session_key: sessionKey }) : [], intervalMs, [sessionKey, intervalMs]);
 }

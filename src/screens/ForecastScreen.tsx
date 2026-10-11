@@ -8,7 +8,7 @@ import { predictOrder, PIT_LOSS_SINGAPORE } from '../forecastOrder';
 import { T, TYRE, teamColour } from '../theme';
 
 export default function ForecastScreen() {
-  const { drivers, proxy: proxyRaw, mode, session } = useSessionCtx();
+  const { drivers, proxy: proxyRaw, mode, session, finished } = useSessionCtx();
   const proxy = mode === 'proxy' ? proxyRaw : undefined;
   const live = useLive();
   const curLap = proxy?.lap_count?.CurrentLap ?? Math.max(0, ...live.laps.map(l => l.lap_number));
@@ -19,6 +19,7 @@ export default function ForecastScreen() {
     [drivers, live.stints, live.positions, live.intervals, live.laps, curLap, total, session?.circuit_short_name, proxy?.timing_extra],
   );
 
+  if (finished) return <ActualResult />;
   return (
     <View style={s.c}>
       <ScrollView>
@@ -84,3 +85,63 @@ const s = StyleSheet.create({
   conf: { width: 70, textAlign: 'right', fontWeight: '700', fontSize: 12 },
   empty: { color: T.dim, padding: 16, textAlign: 'center' },
 });
+
+/** Finished session: real classification (no prediction). */
+function ActualResult() {
+  const { drivers, proxy: proxyRaw, mode, session } = useSessionCtx();
+  const proxy = mode === 'proxy' ? proxyRaw : undefined;
+  const live = useLive();
+  const isRace = /race|sprint/i.test(session?.session_type ?? '') && !/qualifying|shootout/i.test(session?.session_name ?? '');
+  const ex = new Map((proxy?.timing_extra ?? []).map(x => [x.driver_number, x]));
+  const gap = new Map(live.intervals.map(i => [i.driver_number, i.gap_to_leader]));
+  const last = new Map<number, number>(); for (const p of live.positions) last.set(p.driver_number, p.position);
+  const dm = new Map(drivers.map(d => [d.driver_number, d]));
+  const order = [...last.entries()].sort((a, b) => a[1] - b[1]).map(([n]) => n).filter(n => dm.has(n));
+  const comp = new Map<number, string | null>(); for (const st of [...live.stints].sort((a, b) => a.stint_number - b.stint_number)) comp.set(st.driver_number, st.compound);
+  const fmtGap = (g: unknown, i: number) => i === 0 ? (isRace ? 'Winnaar' : '') : g == null || g === '' ? '' : typeof g === 'number' ? `+${g.toFixed(3)}` : String(g).replace(/^\+?(\d+)\s*L.*$/i, '+$1 rd');
+  return (
+    <View style={s.c}>
+      <ScrollView>
+        <SessionHeader updated={live.updated} />
+        <ErrorBanner msg={live.error} onRetry={live.refresh} hasData={live.positions.length > 0} />
+        <View style={s.card}>
+          <Text style={s.h}>WERKELIJKE UITSLAG</Text>
+          <Text style={s.hint}>Sessie afgerond — dit is de officiële eindstand, geen voorspelling.{isRace ? ' +/− = verschil met startpositie.' : ''}</Text>
+          <View style={s.head}>
+            <Text style={[s.th, { width: 36 }]}>POS</Text>
+            <Text style={[s.th, { flex: 1 }]}>COUREUR</Text>
+            <Text style={[s.th, { width: 44, textAlign: 'center' }]}>{isRace ? 'GRID' : ''}</Text>
+            <Text style={[s.th, { width: 48, textAlign: 'right' }]}>{isRace ? '+/−' : ''}</Text>
+            <Text style={[s.th, { width: 70, textAlign: 'right' }]}>{isRace ? 'GAP' : 'BESTE'}</Text>
+          </View>
+          {order.length === 0 && <Text style={s.empty}>Geen uitslag beschikbaar.</Text>}
+          {order.map((n, i) => {
+            const d = dm.get(n)!; const x = ex.get(n);
+            const dnf = isRace && !!(x?.retired || x?.stopped);
+            const grid = x?.grid_pos ?? null; const delta = grid ? grid - (i + 1) : 0;
+            const aCol = delta > 0 ? T.green : delta < 0 ? '#ff5a5a' : T.sub;
+            const c = comp.get(n) ?? null;
+            const best = x?.best_lap != null ? `${Math.floor(x.best_lap / 60)}:${(x.best_lap % 60).toFixed(3).padStart(6, '0')}` : '–';
+            return (
+              <View key={n} style={s.row}>
+                <View style={[s.predBox, i === 0 && !dnf && { backgroundColor: T.red }]}><Text style={s.pred}>{dnf ? '–' : i + 1}</Text></View>
+                <View style={[s.bar, { backgroundColor: teamColour(d.team_colour) }]} />
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={s.acr}>{d.name_acronym}</Text>
+                    {c && <View style={[s.tyre, { borderColor: TYRE[c]?.c ?? '#777' }]}><Text style={[s.tyreT, { color: TYRE[c]?.c ?? '#777' }]}>{TYRE[c]?.l ?? '?'}</Text></View>}
+                  </View>
+                  <Text style={s.sub} numberOfLines={1}>{dnf ? 'Uitgevallen (DNF)' : `${d.team_name ?? ''}${isRace && x?.number_of_pit_stops != null ? ` · ${x.number_of_pit_stops} stop${x.number_of_pit_stops === 1 ? '' : 's'}` : ''}`}</Text>
+                </View>
+                <Text style={s.now}>{isRace ? (grid ? `P${grid}` : 'pit') : ''}</Text>
+                <Text style={[s.delta, { color: dnf ? T.dim : aCol }]}>{isRace && grid && !dnf ? (delta > 0 ? `▲${delta}` : delta < 0 ? `▼${-delta}` : '–') : ''}</Text>
+                <Text style={[s.conf, { color: T.sub }]}>{dnf ? 'DNF' : isRace ? fmtGap(gap.get(n), i) : best}</Text>
+              </View>
+            );
+          })}
+        </View>
+        <View style={{ height: 20 }} />
+      </ScrollView>
+    </View>
+  );
+}

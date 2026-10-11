@@ -171,7 +171,8 @@ export interface ProxyState {
   source: string; connected: boolean; last_message: string | null; session: Session | null; session_status: string | null;
   track_status: { Status: string; Message: string } | null; lap_count: { CurrentLap: number; TotalLaps: number } | null;
   overtake?: { enabled: boolean; since: string | null; lap: number | null } | null;
-  timing_extra?: { driver_number: number; retired?: boolean; stopped?: boolean; in_pit?: boolean; speed_trap: number | null; speed_trap_fastest: boolean; speed?: number | null; rpm?: number | null; gear?: number | null; overtake_state?: number | null }[];
+  fastest?: { driver_number: number; time: number | null; lap: number | null } | null; archive_path?: string;
+  timing_extra?: { driver_number: number; grid_pos?: number | null; knocked_out?: boolean; best_lap_times?: (number | null)[] | null; best_lap?: number | null; number_of_pit_stops?: number | null; retired?: boolean; stopped?: boolean; in_pit?: boolean; speed_trap: number | null; speed_trap_fastest: boolean; speed?: number | null; rpm?: number | null; gear?: number | null; overtake_state?: number | null }[];
   drivers: Driver[]; positions: Position[]; intervals: Interval[]; laps: Lap[]; stints: Stint[]; race_control: RaceControl[]; team_radio: (TeamRadio & Partial<Transcript>)[];
 }
 export interface Transcript { transcript: string | null; transcript_status: 'pending' | 'done' | 'error' }
@@ -190,4 +191,23 @@ export async function getProxyState(): Promise<ProxyState> {
     if (!res.ok) throw new Error(`proxy HTTP ${res.status}`);
     return (await res.json()) as ProxyState;
   } finally { clearTimeout(t); }
+}
+
+/** Finished session from the official F1 static archive, via our proxy (one-shot, cached in localStorage). */
+export async function getArchiveState(key: number, year?: number): Promise<ProxyState> {
+  const ck = `f1archive:${key}`;
+  try {
+    const ctl = typeof AbortController !== 'undefined' ? new AbortController() : undefined;
+    const t = setTimeout(() => ctl?.abort(), 45_000);
+    try {
+      const res = await fetch(`${proxyUrl()}/archive?key=${key}${year ? `&year=${year}` : ''}`, { signal: ctl?.signal });
+      if (!res.ok) throw new Error(`archief HTTP ${res.status}`);
+      const st = (await res.json()) as ProxyState;
+      try { if (typeof localStorage !== 'undefined') localStorage.setItem(ck, JSON.stringify(st)); } catch { /* quota */ }
+      return st;
+    } finally { clearTimeout(t); }
+  } catch (e) {
+    try { const c = typeof localStorage !== 'undefined' ? localStorage.getItem(ck) : null; if (c) return JSON.parse(c) as ProxyState; } catch { /* ignore */ }
+    throw e;
+  }
 }

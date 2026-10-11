@@ -6,7 +6,7 @@ import { T } from '../theme';
 import ErrorBanner from './ErrorBanner';
 
 export default function SessionHeader({ updated }: { updated?: Date }) {
-  const { session, error, refresh, mode, proxy } = useSessionCtx();
+  const { session, error, refresh, mode, proxy, archive } = useSessionCtx();
   if (!session) return error ? <ErrorBanner msg={error} onRetry={refresh} /> : <View style={s.box}><Text style={s.sub}>Sessie laden…</Text></View>;
   const pst = proxy?.session_status;
   const st = mode === 'proxy' && pst ? (pst === 'Started' || pst === 'Aborted' ? 'Live' : pst === 'Finished' || pst === 'Finalised' || pst === 'Ends' ? 'Afgerond' : 'Gepland') : sessionStatus(session);
@@ -24,8 +24,9 @@ export default function SessionHeader({ updated }: { updated?: Date }) {
           <Text style={s.badgeT}>{st.toUpperCase()}</Text>
         </View>
       </View>
-      {mode === 'proxy' && <Text style={s.src}>● Bron: officiële F1 live timing{proxy?.lap_count ? `  ·  Ronde ${proxy.lap_count.CurrentLap}/${proxy.lap_count.TotalLaps}` : ''}{proxy?.track_status ? `  ·  ${TRACK[proxy.track_status.Status] ?? proxy.track_status.Message}` : ''}</Text>}
-      <Text style={s.note}>ⓘ {mode === 'proxy' ? 'Live timing via eigen proxy (enkele seconden vertraging).' : 'Gratis OpenF1-data loopt enkele seconden tot minuten achter.'}{updated ? `  ·  ${updated.toLocaleTimeString('nl-NL')}` : ''}</Text>
+      {archive && <Text style={s.src}>● Bron: officieel F1 live-timing-archief (eindstand){proxy?.lap_count ? `  ·  ${proxy.lap_count.CurrentLap} ronden` : ''}</Text>}
+      {mode === 'proxy' && !archive && <Text style={s.src}>● Bron: officiële F1 live timing{proxy?.lap_count ? `  ·  Ronde ${proxy.lap_count.CurrentLap}/${proxy.lap_count.TotalLaps}` : ''}{proxy?.track_status ? `  ·  ${TRACK[proxy.track_status.Status] ?? proxy.track_status.Message}` : ''}</Text>}
+      <Text style={s.note}>ⓘ {archive ? 'Afgeronde sessie — eenmalig geladen, geen live-updates.' : mode === 'proxy' ? 'Live timing via eigen proxy (enkele seconden vertraging).' : 'Gratis OpenF1-data loopt enkele seconden tot minuten achter.'}{updated ? `  ·  ${updated.toLocaleTimeString('nl-NL')}` : ''}</Text>
     </View>
   );
 }

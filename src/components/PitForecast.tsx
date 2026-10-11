@@ -8,7 +8,7 @@ export { forecast, type Forecast } from '../forecastLogic';
 
 
 
-export default function PitForecast({ drivers, stints, positions, laps, curLap, total, circuit }: { drivers: Driver[]; stints: Stint[]; positions: Position[]; laps: Lap[]; curLap?: number; total?: number; circuit?: string }) {
+export default function PitForecast({ drivers, stints, positions, laps, curLap, total, circuit, actual }: { actual?: boolean; drivers: Driver[]; stints: Stint[]; positions: Position[]; laps: Lap[]; curLap?: number; total?: number; circuit?: string }) {
   const maxLap = Math.max(0, ...laps.map(l => l.lap_number), ...stints.map(s => s.lap_end ?? 0));
   const cl = curLap ?? maxLap;
   const tot = Math.max(total ?? 0, maxLap, cl, 1);
@@ -19,9 +19,9 @@ export default function PitForecast({ drivers, stints, positions, laps, curLap, 
     <View>
       <View style={s.legend}>
         {['SOFT', 'MEDIUM', 'HARD', 'INTERMEDIATE', 'WET'].map(c => <Text key={c} style={[s.lg, { color: TYRE[c].c }]}>● {TYRE[c].nl}</Text>)}
-        <Text style={[s.lg, { color: '#ffc04d' }]}>▮ verwacht stopvenster</Text>
+        {!actual && <Text style={[s.lg, { color: '#ffc04d' }]}>▮ verwacht stopvenster</Text>}
       </View>
-      <Text style={s.hint}>Ronde {cl}/{tot}. Voorspelling o.b.v. bandenleeftijd, typische stintlengtes en de stints van andere coureurs.</Text>
+      <Text style={s.hint}>{actual ? `Afgeronde sessie · ${tot} ronden. Werkelijk gereden stints per coureur (eindstand-volgorde).` : `Ronde ${cl}/${tot}. Voorspelling o.b.v. bandenleeftijd, typische stintlengtes en de stints van andere coureurs.`}</Text>
       {rows.map((r, i) => (
         <View key={r.driver.driver_number} style={s.row}>
           <View style={s.name}>
@@ -34,14 +34,16 @@ export default function PitForecast({ drivers, stints, positions, laps, curLap, 
                 const a = (st.lap_start ?? 1) - 1, b = Math.min(st.lap_end ?? cl, cl);
                 return <View key={st.stint_number} style={[s.seg, { left: pct(a), width: pct(Math.max(0.5, b - a)), backgroundColor: TYRE[st.compound ?? '']?.c ?? '#777' }]} />;
               })}
-              {(r.window ?? r.maybe) && <View style={[s.win, !r.window && s.winMaybe, { left: pct((r.window ?? r.maybe)![0] - 1), width: pct(Math.max(1, (r.window ?? r.maybe)![1] - (r.window ?? r.maybe)![0] + 1)) }]} />}
-              <View style={[s.now, { left: pct(cl) }]} />
+              {!actual && (r.window ?? r.maybe) && <View style={[s.win, !r.window && s.winMaybe, { left: pct((r.window ?? r.maybe)![0] - 1), width: pct(Math.max(1, (r.window ?? r.maybe)![1] - (r.window ?? r.maybe)![0] + 1)) }]} />}
+              {!actual && <View style={[s.now, { left: pct(cl) }]} />}
             </View>
-            <Text style={[s.lbl, r.mustStop && { color: '#ffc04d' }]} numberOfLines={1}>
-              {r.mustStop
+            <Text style={[s.lbl, !actual && r.mustStop && { color: '#ffc04d' }]} numberOfLines={1}>
+              {actual
+                ? `${r.stints.length - 1 > 0 ? `${r.stints.length - 1} stop${r.stints.length - 1 > 1 ? 's' : ''}` : 'geen stop'} · ${r.stints.map(st => `${TYRE[st.compound ?? '']?.l ?? '?'} ${(st.lap_end ?? cl) - (st.lap_start ?? 1) + 1}`).join(' → ')}`
+                : r.mustStop
                 ? `Moet nog stoppen · verwacht R${r.window![0]}–${r.window![1]}`
                 : `Al gestopt (${r.pits}×)${r.maybe ? ` · mogelijk extra stop R${r.maybe[0]}–${r.maybe[1]}` : ''}`}
-              <Text style={s.dim}>  · {TYRE[r.compound ?? '']?.l ?? '?'} {r.age} rd</Text>
+              {!actual && <Text style={s.dim}>  · {TYRE[r.compound ?? '']?.l ?? '?'} {r.age} rd</Text>}
             </Text>
           </View>
         </View>
