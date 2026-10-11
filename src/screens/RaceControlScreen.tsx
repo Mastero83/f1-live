@@ -3,6 +3,7 @@ import { FlatList, View, Text, StyleSheet } from 'react-native';
 import { useSessionCtx } from '../SessionContext';
 import { usePolling } from '../hooks';
 import { get, RaceControl } from '../api';
+import ErrorBanner from '../components/ErrorBanner';
 import SessionHeader from '../components/SessionHeader';
 
 const FLAG: Record<string, { c: string; nl: string }> = {
@@ -15,12 +16,12 @@ const CAT: Record<string, string> = { Flag: 'Vlag', SafetyCar: 'Safety car', Drs
 export default function RaceControlScreen() {
   const { session, live } = useSessionCtx();
   const key = session?.session_key;
-  const { data, error, updated } = usePolling(async () => key ? get<RaceControl>('race_control', { session_key: key }) : [], live ? 5000 : 0, [key, live]);
+  const { data, error, updated, refresh } = usePolling(async () => key ? get<RaceControl>('race_control', { session_key: key }) : [], live ? 5000 : 0, [key, live]);
   const items = [...(data ?? [])].sort((a, b) => b.date.localeCompare(a.date));
   return (
     <View style={s.c}>
       <SessionHeader updated={updated} />
-      {error && <Text style={s.err}>Fout: {error}</Text>}
+      <ErrorBanner msg={error} onRetry={refresh} hasData={!!data?.length} />
       <FlatList data={items} keyExtractor={(r, i) => `${r.date}-${i}`}
         ListEmptyComponent={<Text style={s.empty}>Geen wedstrijdleidingsberichten.</Text>}
         renderItem={({ item }) => {

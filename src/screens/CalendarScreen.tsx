@@ -3,12 +3,13 @@ import { ScrollView, View, Text, StyleSheet, Pressable, Image, ActivityIndicator
 import { usePolling } from '../hooks';
 import { get, Meeting, Session, sessionStatus, SESSION_NL, fmtDay, fmtTime, fmtRange } from '../api';
 import { T } from '../theme';
+import ErrorBanner from '../components/ErrorBanner';
 
 const BADGE = { Live: { bg: T.red, t: 'LIVE' }, Gepland: { bg: '#2d2d3a', t: 'GEPLAND' }, Afgerond: { bg: '#1f3a2a', t: 'AFGEROND' } } as const;
 
 export default function CalendarScreen({ onOpen }: { onOpen: (target: number | 'latest') => void }) {
   const [year, setYear] = useState(new Date().getFullYear());
-  const { data, error } = usePolling(async () => {
+  const { data, error, refresh } = usePolling(async () => {
     const [meetings, sessions] = await Promise.all([get<Meeting>('meetings', { year }), get<Session>('sessions', { year })]);
     return { meetings, sessions };
   }, 60_000, [year]);
@@ -65,7 +66,7 @@ export default function CalendarScreen({ onOpen }: { onOpen: (target: number | '
         </View>
       </View>
       <ScrollView ref={scroll} contentContainerStyle={{ paddingBottom: 30 }}>
-        {error && <Text style={s.err}>Fout: {error}</Text>}
+        <ErrorBanner msg={error} onRetry={refresh} hasData={!!data} />
         {!data && !error && <ActivityIndicator color={T.red} style={{ marginTop: 40 }} />}
         {data && meetings.length === 0 && <Text style={s.empty}>Geen kalender voor {year}.</Text>}
         {meetings.map(({ m, sessions }) => {

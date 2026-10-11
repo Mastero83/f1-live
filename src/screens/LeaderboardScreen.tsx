@@ -3,6 +3,7 @@ import { FlatList, View, Text, StyleSheet, RefreshControl } from 'react-native';
 import { useSessionCtx } from '../SessionContext';
 import { useLive } from '../LiveData';
 import { buildLeaderboard, Row } from '../api';
+import ErrorBanner from '../components/ErrorBanner';
 import SessionHeader from '../components/SessionHeader';
 import { T, teamColour, TYRE } from '../theme';
 
@@ -18,7 +19,7 @@ export default function LeaderboardScreen() {
       <FlatList data={rows} keyExtractor={r => String(r.driver_number)}
         ListHeaderComponent={<>
           <SessionHeader updated={live.updated} />
-          {live.error && <Text style={s.err}>Fout: {live.error}</Text>}
+          <ErrorBanner msg={live.error} onRetry={live.refresh} hasData={rows.length > 0} />
           <View style={s.head}>
             <Text style={[s.h, { width: 34 }]}>POS</Text><Text style={[s.h, { flex: 1 }]}>COUREUR</Text>
             <Text style={[s.h, s.hn]}>{isRace ? 'LEIDER' : 'SNELSTE'}</Text><Text style={[s.h, s.hn]}>{isRace ? 'INTERVAL' : 'Δ VOOR'}</Text>

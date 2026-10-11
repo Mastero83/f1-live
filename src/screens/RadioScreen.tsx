@@ -4,6 +4,7 @@ import { play, stop } from '../player';
 import { useSessionCtx } from '../SessionContext';
 import { usePolling } from '../hooks';
 import { get, TeamRadio } from '../api';
+import ErrorBanner from '../components/ErrorBanner';
 import SessionHeader from '../components/SessionHeader';
 
 export default function RadioScreen() {
@@ -11,7 +12,7 @@ export default function RadioScreen() {
   const key = session?.session_key;
   const [filter, setFilter] = useState<number | null>(null);
   const [playing, setPlaying] = useState<string | null>(null);
-  const { data, error, updated } = usePolling(async () => key ? get<TeamRadio>('team_radio', { session_key: key }) : [], live ? 10_000 : 0, [key, live]);
+  const { data, error, updated, refresh } = usePolling(async () => key ? get<TeamRadio>('team_radio', { session_key: key }) : [], live ? 10_000 : 0, [key, live]);
 
   useEffect(() => () => { stop(); }, []);
 
@@ -30,7 +31,7 @@ export default function RadioScreen() {
         <Chip label="Alle" active={filter == null} onPress={() => setFilter(null)} />
         {drivers.map(d => <Chip key={d.driver_number} label={d.name_acronym} colour={d.team_colour} active={filter === d.driver_number} onPress={() => setFilter(d.driver_number)} />)}
       </ScrollView>
-      {error && <Text style={s.err}>Fout: {error}</Text>}
+      <ErrorBanner msg={error} onRetry={refresh} hasData={!!data?.length} />
       <FlatList data={items} keyExtractor={r => r.recording_url}
         ListEmptyComponent={<Text style={s.empty}>Geen teamradioberichten.</Text>}
         renderItem={({ item }) => {

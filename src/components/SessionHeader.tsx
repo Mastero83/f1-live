@@ -3,10 +3,11 @@ import { View, Text, StyleSheet } from 'react-native';
 import { useSessionCtx } from '../SessionContext';
 import { sessionStatus } from '../api';
 import { T } from '../theme';
+import ErrorBanner from './ErrorBanner';
 
 export default function SessionHeader({ updated }: { updated?: Date }) {
-  const { session, error } = useSessionCtx();
-  if (!session) return <View style={s.box}><Text style={s.sub}>{error ? `Fout: ${error}` : 'Sessie laden…'}</Text></View>;
+  const { session, error, refresh } = useSessionCtx();
+  if (!session) return error ? <ErrorBanner msg={error} onRetry={refresh} /> : <View style={s.box}><Text style={s.sub}>Sessie laden…</Text></View>;
   const st = sessionStatus(session);
   const color = st === 'Live' ? T.red : st === 'Gepland' ? '#f5a623' : '#44444f';
   return (

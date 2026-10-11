@@ -4,6 +4,7 @@ import Svg, { Polyline, Line, Text as SvgText, Circle } from 'react-native-svg';
 import { useSessionCtx } from '../SessionContext';
 import { useLive } from '../LiveData';
 import { fmtLap, Lap, Position } from '../api';
+import ErrorBanner from '../components/ErrorBanner';
 import SessionHeader from '../components/SessionHeader';
 import { T, teamColour } from '../theme';
 
@@ -63,6 +64,7 @@ export default function AnalysisScreen() {
       </ScrollView>
       <ScrollView>
         <SessionHeader updated={live.updated} />
+        <ErrorBanner msg={live.error} onRetry={live.refresh} hasData={live.laps.length > 0 || live.stints.length > 0} />
         <View style={s.card}>
           <Text style={s.h}>RONDETIJDEN</Text>
           <Text style={s.hint}>Tik coureurs aan om te vergelijken (max 4). Pit-/SC-ronden weggefilterd.</Text>

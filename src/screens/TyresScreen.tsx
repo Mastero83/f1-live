@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ScrollView, View, Text, StyleSheet } from 'react-native';
 import { useSessionCtx } from '../SessionContext';
 import { useLive } from '../LiveData';
+import ErrorBanner from '../components/ErrorBanner';
 import SessionHeader from '../components/SessionHeader';
 import DriverChips from '../components/DriverChips';
 import { T, teamColour, TYRE } from '../theme';
@@ -30,6 +31,7 @@ export default function TyresScreen() {
       <DriverChips drivers={drivers} selected={sel} onSelect={setSel} allowAll />
       <ScrollView>
         <SessionHeader updated={live.updated} />
+        <ErrorBanner msg={live.error} onRetry={live.refresh} hasData={live.laps.length > 0 || live.stints.length > 0} />
         {live.stints.length === 0 && <Text style={s.empty}>Nog geen bandeninformatie.</Text>}
         {list.map(d => {
           const st = live.stints.filter(x => x.driver_number === d.driver_number).sort((a, b) => a.stint_number - b.stint_number);

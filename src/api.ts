@@ -8,17 +8,76 @@ export interface Lap { driver_number: number; lap_number: number; lap_duration: 
 export interface TeamRadio { date: string; driver_number: number; recording_url: string; }
 export interface RaceControl { date: string; driver_number: number | null; lap_number: number | null; category: string; flag: string | null; scope: string | null; sector: number | null; message: string; }
 
+// ---- Network layer: throttled queue, backoff, persistent cache, status ----
+export type ApiState = 'ok' | 'blocked' | 'error';
+let apiState: ApiState = 'ok';
+const listeners = new Set<(s: ApiState) => void>();
+export const getApiState = () => apiState;
+export function onApiState(fn: (s: ApiState) => void) { listeners.add(fn); return () => { listeners.delete(fn); }; }
+function setApiState(s: ApiState) { if (s !== apiState) { apiState = s; listeners.forEach(f => f(s)); } }
+
+const MAX_CONCURRENT = 2, MIN_GAP_MS = 350; // ~3 req/s
+let active = 0, lastStart = 0;
+const queue: (() => void)[] = [];
+function pump() {
+  if (active >= MAX_CONCURRENT || !queue.length) return;
+  const wait = lastStart + MIN_GAP_MS - Date.now();
+  if (wait > 0) { setTimeout(pump, wait); return; }
+  lastStart = Date.now(); active++; queue.shift()!();
+}
+function throttled<R>(fn: () => Promise<R>): Promise<R> {
+  return new Promise<R>((resolve, reject) => {
+    queue.push(() => fn().then(resolve, reject).finally(() => { active--; pump(); }));
+    pump();
+  });
+}
+
+const store: { getItem(k: string): string | null; setItem(k: string, v: string): void } | undefined = (globalThis as any).localStorage;
+const mem = new Map<string, string>();
+function cacheGet(url: string): unknown[] | undefined {
+  try { const v = mem.get(url) ?? store?.getItem('f1c:' + url); return v ? JSON.parse(v) : undefined; } catch { return undefined; }
+}
+function cachePut(url: string, data: unknown[]) {
+  const v = JSON.stringify(data); mem.set(url, v);
+  if (v.length < 400_000) try { store?.setItem('f1c:' + url, v); } catch { /* quota */ }
+}
+
+/** Free OpenF1 returns 401 (without CORS headers -> Safari "Load failed") for ALL data while a session is live. */
+export class ApiError extends Error { constructor(public kind: 'blocked' | 'network' | 'http', msg: string) { super(msg); } }
+export function friendlyError(e: unknown): string {
+  if (e instanceof ApiError && e.kind === 'blocked') return 'OpenF1 blokkeert de gratis API tijdens een live F1-sessie (ook oude data). Na afloop van de sessie werkt alles weer. Je ziet de laatst opgeslagen gegevens.';
+  if (e instanceof ApiError && e.kind === 'http') return `OpenF1 gaf een fout (${e.message}). We proberen het automatisch opnieuw.`;
+  return 'Geen verbinding met OpenF1 (geblokkeerd tijdens live sessie of netwerkfout). We proberen het automatisch opnieuw.';
+}
+
 export async function get<T>(endpoint: string, params: Record<string, string | number>): Promise<T[]> {
   const qs = Object.entries(params).map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`).join('&');
-  let res = await fetch(`${BASE}/${endpoint}?${qs}`);
-  for (let i = 0; res.status === 429 && i < 3; i++) { // free tier rate limit
-    await new Promise(r => setTimeout(r, 1000 * (i + 1)));
-    res = await fetch(`${BASE}/${endpoint}?${qs}`);
+  const url = `${BASE}/${endpoint}?${qs}`;
+  const cacheable = !Object.keys(params).some(k => k.endsWith('>')); // incremental queries aren't cached
+  try {
+    const data = await throttled(async () => {
+      let res: Response | undefined;
+      for (let i = 0; i < 3; i++) {
+        try { res = await fetch(url); } catch { throw new ApiError('network', 'Load failed'); }
+        if (res.status !== 429) break;
+        await new Promise(r => setTimeout(r, 1500 * (i + 1)));
+      }
+      if (!res) throw new ApiError('network', 'no response');
+      if (res.status === 404) return [];
+      if (res.status === 401 || res.status === 403) throw new ApiError('blocked', `HTTP ${res.status}`);
+      if (!res.ok) throw new ApiError('http', `HTTP ${res.status}`);
+      const j = await res.json();
+      return Array.isArray(j) ? j : [];
+    });
+    setApiState('ok');
+    if (cacheable) cachePut(url, data);
+    return data as T[];
+  } catch (e) {
+    setApiState(e instanceof ApiError && e.kind === 'http' ? 'error' : 'blocked');
+    const cached = cacheable ? cacheGet(url) : undefined;
+    if (cached) return cached as T[];
+    throw e;
   }
-  if (res.status === 404) return []; // OpenF1: "No results found."
-  if (!res.ok) throw new Error(`HTTP ${res.status} (${endpoint})`);
-  const data = await res.json();
-  return Array.isArray(data) ? (data as T[]) : [];
 }
 
 export type SessionStatus = 'Gepland' | 'Live' | 'Afgerond';
