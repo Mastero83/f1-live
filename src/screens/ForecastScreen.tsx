@@ -2,13 +2,10 @@ import React, { useMemo } from 'react';
 import { ScrollView, View, Text, StyleSheet } from 'react-native';
 import { useSessionCtx } from '../SessionContext';
 import { useLive } from '../LiveData';
-import { forecast } from '../components/PitForecast';
 import SessionHeader from '../components/SessionHeader';
 import ErrorBanner from '../components/ErrorBanner';
+import { predictOrder, PIT_LOSS_SINGAPORE } from '../forecastOrder';
 import { T, TYRE, teamColour } from '../theme';
-
-// Typical total pit loss (pit lane + stop) in seconds — Singapore street circuit
-const PIT_LOSS = 28;
 
 export default function ForecastScreen() {
   const { drivers, proxy: proxyRaw, mode, session } = useSessionCtx();
@@ -16,38 +13,11 @@ export default function ForecastScreen() {
   const live = useLive();
   const curLap = proxy?.lap_count?.CurrentLap ?? Math.max(0, ...live.laps.map(l => l.lap_number));
   const total = proxy?.lap_count?.TotalLaps ?? Math.max(curLap, 1);
-  const remaining = Math.max(0, total - curLap);
 
-  const rows = useMemo(() => {
-    const pf = forecast(drivers, live.stints, live.positions, curLap, total, session?.circuit_short_name);
-    const pos = new Map(live.positions.map(p => [p.driver_number, p.position]));
-    const gapMap = new Map(live.intervals.map(i => [i.driver_number, i.gap_to_leader]));
-    const leaderGap = (n: number, curPos: number) => {
-      const g = gapMap.get(n);
-      if (typeof g === 'number') return g;
-      // Lapped / unknown gap: keep current order with a large offset so they don't leapfrog
-      return 1000 + curPos * 30;
-    };
-    // Projected race time offset vs leader: current gap + remaining pit losses
-    const scored = pf.map(r => {
-      const pitsLeft = r.mustStop ? 1 : 0;
-      const curPos = pos.get(r.driver.driver_number) ?? 99;
-      const proj = leaderGap(r.driver.driver_number, curPos) + pitsLeft * PIT_LOSS;
-      // Soft tyre late in race: small pace penalty if very old
-      const agePenalty = r.compound === 'SOFT' && r.age > 20 ? (r.age - 20) * 0.15 : r.compound === 'MEDIUM' && r.age > 30 ? (r.age - 30) * 0.1 : 0;
-      return { ...r, curPos: pos.get(r.driver.driver_number) ?? 99, proj: proj + agePenalty, pitsLeft };
-    }).sort((a, b) => a.proj - b.proj || a.curPos - b.curPos);
-    return scored.map((r, i) => {
-      const pred = i + 1;
-      const delta = r.curPos - pred;
-      // Confidence: early race / many must-stop → low; late race with few stops left → high
-      const stopsLeft = scored.filter(x => x.pitsLeft > 0).length;
-      let conf: 'Laag' | 'Gemiddeld' | 'Hoog' = 'Gemiddeld';
-      if (remaining > total * 0.55 || stopsLeft > drivers.length * 0.5) conf = 'Laag';
-      else if (remaining < total * 0.25 && stopsLeft <= 3) conf = 'Hoog';
-      return { ...r, pred, delta, conf };
-    });
-  }, [drivers, live.stints, live.positions, live.intervals, live.laps, curLap, total, session?.circuit_short_name]);
+  const rows = useMemo(
+    () => predictOrder(drivers, live.stints, live.positions, live.intervals, curLap, total, session?.circuit_short_name),
+    [drivers, live.stints, live.positions, live.intervals, live.laps, curLap, total, session?.circuit_short_name],
+  );
 
   return (
     <View style={s.c}>
@@ -56,7 +26,7 @@ export default function ForecastScreen() {
         <ErrorBanner msg={live.error} onRetry={live.refresh} hasData={live.positions.length > 0} />
         <View style={s.card}>
           <Text style={s.h}>VOORSPELDE EINDUITSLAG</Text>
-          <Text style={s.hint}>Ronde {curLap}/{total}. Op basis van huidige posities, achterstanden, verplichte pitstops (~{PIT_LOSS}s verlies in Singapore) en bandenleeftijd. Geen strategie-simulatie — indicatief.</Text>
+          <Text style={s.hint}>Ronde {curLap}/{total}. Op basis van huidige posities, achterstanden, verplichte pitstops (~{PIT_LOSS_SINGAPORE}s verlies in Singapore) en bandenleeftijd. Geen strategie-simulatie — indicatief.</Text>
           <View style={s.head}>
             <Text style={[s.th, { width: 36 }]}>PRED</Text>
             <Text style={[s.th, { flex: 1 }]}>COUREUR</Text>
